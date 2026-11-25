@@ -13,14 +13,15 @@ Internet
   │  TLS
   ▼
 Reverse proxy / load balancer
-  ├─ /              -> frontend dist/ (React SPA)
-  ├─ /api/, /admin/, /health/ -> Gunicorn -> Django
-  ├─ /static/       -> STATIC_ROOT
-  ├─ /media/avatars/ -> MEDIA_ROOT/avatars (public profile images)
-  └─ /media/challenge_files/ -> DENY (served only by the gated API endpoint)
+  ├─ /                    -> frontend dist/ (React SPA)
+  ├─ /api/, /admin/, /health/ -> Daphne (ASGI) -> Django HTTP
+  ├─ /ws/...              -> Daphne (ASGI) -> Django Channels WebSocket
+  ├─ /static/             -> WhiteNoise (app) or proxy-served STATIC_ROOT
+  ├─ /media/avatars/      -> MEDIA_ROOT/avatars (public profile images)
+  └─ /media/challenge_files/ -> DENY (served only by gated API endpoint)
                     │
-                    ├─ PostgreSQL or a durable SQLite file
-                    └─ Redis: broker (/0) + shared cache (/1)
+                    ├─ PostgreSQL (production) / SQLite (dev only)
+                    └─ Redis: broker (/0) + shared cache (/1) + channel layer (/2)
                               │
                               ├─ Celery worker
                               └─ Celery Beat
@@ -110,7 +111,45 @@ If the SPA is served from a different origin, set its exact origin in
 
 ## 3. Build and start
 
-### Backend
+### Docker image (recommended for Render)
+
+Build the backend image from `ctf-platform-be/`:
+
+```bash
+docker build -t flaghunt-backend:prod .
+```
+
+The image:
+- uses `python:3.10-slim`, installs `requirements-production.txt` (gunicorn, whitenoise, psycopg)
+- runs as non-root user `app` (uid 10001)
+- collects static files at build time (safe dev env, no production secrets)
+- uses `docker/entrypoint.sh` to wait for DB (non-SQLite), optionally run checks/collectstatic, bind to `$PORT`, and `exec` the server process
+- defaults to **Daphne ASGI** (`config.asgi:application`) to serve both HTTP and WebSocket (terminal) traffic
+- can still run Gunicorn WSGI by overriding command (HTTP-only; no Channels websocket support)
+- can run Celery worker/Beat by overriding command
+
+Run locally for smoke testing (example):
+
+```bash
+docker run --rm -p 8000:8000 --env-file .env.production flaghunt-backend:prod
+```
+
+### Local Docker validation stack
+
+Use `docker-compose.dev.yml` for local validation only (not Render deployment):
+
+```bash
+cd ctf-platform-be
+docker compose -f docker-compose.dev.yml up --build -d
+docker compose -f docker-compose.dev.yml run --rm backend python manage.py migrate --noinput
+curl -fsS http://127.0.0.1:8000/health/live/
+curl -fsS http://127.0.0.1:8000/health/ready/
+curl -fsS http://127.0.0.1:8000/health/celery/
+docker compose -f docker-compose.dev.yml logs -f backend
+docker compose -f docker-compose.dev.yml down -v
+```
+
+### Backend (non-Docker / host)
 
 ```bash
 cd /srv/flaghunt/ctf-platform-be
@@ -126,7 +165,13 @@ python manage.py setup_groups            # reconcile Admin group permissions
 python manage.py collectstatic --noinput
 ```
 
-Start Gunicorn behind the proxy:
+Start the production ASGI server behind the proxy (HTTP + WebSocket):
+
+```bash
+daphne -b 127.0.0.1 -p 8000 config.asgi:application
+```
+
+If WebSocket terminal functionality is not needed, Gunicorn WSGI can be used for HTTP-only deployments:
 
 ```bash
 gunicorn config.wsgi:application \
@@ -137,10 +182,7 @@ gunicorn config.wsgi:application \
   --error-logfile -
 ```
 
-Gunicorn access logs include the query string. Keep them out of shared logs, or
-use a sanitized format, because the Django request logger deliberately does not
-log query strings. Tune worker count for the host; SQLite is the limiting
-factor and generally supports **one** application instance, not several.
+Gunicorn/Daphne access logs may include request metadata depending on configuration. Keep them out of shared logs or sanitize as needed. The Django request logger deliberately does not log query strings. SQLite is the limiting factor and generally supports **one** application instance, not several.
 
 ### Frontend
 
@@ -171,6 +213,68 @@ celery -A config beat --loglevel=INFO \
 
 Use a persistent volume for `/var/lib/celery`. Worker and Beat must use the same
 broker database.
+
+### Render Docker Web Service
+
+Deploy the backend as a **Render Docker Web Service** from the `ctf-platform-be/` directory (Dockerfile discoverable there).
+
+- **Runtime**: Docker image built from `ctf-platform-be/Dockerfile`
+- **Default command**: Daphne ASGI (`config.asgi:application`) serving HTTP + WebSockets
+- **Bind**: `0.0.0.0:$PORT` (Render provides `PORT`; entrypoint normalizes it)
+- **Health check**: `/health/live/` (liveness). `/health/ready/` checks DB + Redis; `/health/celery/` checks worker + Beat.
+- **Migrations**: run explicitly as a one-off job/shell command, never on every web replica startup:
+  ```bash
+  python manage.py migrate --plan
+  python manage.py migrate --noinput
+  ```
+- **Static files**: collected at image build; WhiteNoise serves them from the app.
+- **Media files**: do not store on container filesystem. Use a Render persistent disk (single instance) or external object storage (S3-compatible) mounted/configured for `MEDIA_ROOT`. Challenge attachments are served through the gated Django endpoint; direct `/media/challenge_files/` must remain denied at proxy.
+- **WebSockets**: terminal gateway uses `/ws/challenges/instances/terminal/` (Channels ASGI). Ensure Render/proxy forwards Upgrade/Connection headers and TLS terminates correctly. Set `FLAGHUNT_WS_ALLOWED_ORIGINS` to the frontend https origin(s).
+- **Celery**: run worker and beat as separate Render worker services/processes using the same image and command override (`celery -A config worker ...`, `celery -A config beat ...`) with the same env vars and Redis URLs.
+
+#### Environment variables by Render service
+
+| Variable | Web (Daphne) | Celery worker | Celery Beat | Required | Notes |
+|---|---:|---:|---:|---:|---|
+| `ENVIRONMENT=production` | Yes | Yes | Yes | Yes | Fail-closed production mode |
+| `DEBUG=False` | Yes | Yes | Yes | Yes | Must be False in production |
+| `DJANGO_SETTINGS_MODULE=config.settings` | Yes | Yes | Yes | Yes | |
+| `SECRET_KEY` | Yes | Yes | Yes | Yes | >=50 chars, random, not placeholder |
+| `ALLOWED_HOSTS` | Yes | Yes | Yes | Yes | Backend/Render domains, comma-separated |
+| `CSRF_TRUSTED_ORIGINS` | Yes | No | No | Yes for web | `https://` frontend/backend origins |
+| `CORS_ALLOWED_ORIGINS` | Yes | No | No | Cond. | Set frontend origin if cross-origin SPA |
+| `FLAGHUNT_WS_ALLOWED_ORIGINS` | Yes | No | No | Yes for WS | Browser origins allowed for terminal WS |
+| `DATABASE_URL` or DB_* | Yes | Yes | Yes | Yes | PostgreSQL required in production |
+| `CACHE_URL` | Yes | Yes | Optional | Yes | Redis cache/throttles; must differ from broker |
+| `CELERY_BROKER_URL` | Yes | Yes | Yes | Yes | Redis broker |
+| `CELERY_RESULT_BACKEND` | Optional | Optional | Optional | No | Leave empty unless result storage needed |
+| `CHANNEL_LAYER_REDIS_URL` | Yes | Optional | Optional | Strongly recommended | Redis DB/instance for WS revocation/messages |
+| `SECURE_SSL_REDIRECT` | Yes | No | No | Yes | True in production |
+| `SESSION_COOKIE_SECURE` | Yes | No | No | Yes | True in production |
+| `CSRF_COOKIE_SECURE` | Yes | No | No | Yes | True in production |
+| `SECURE_HSTS_SECONDS` | Yes | No | No | Yes | >0 in production |
+| `TRUST_PROXY_HEADERS` | Yes | No | No | Usually Yes | Trust TLS proxy X-Forwarded-Proto |
+| `MEDIA_ROOT` | Yes | If tasks touch media | No | Cond. | Persistent disk/object storage mount path |
+| `STATIC_ROOT` | Yes | No | No | No | Default `/app/staticfiles` |
+| `PORT` | Render sets | No | No | Render | Entrypoint binds Daphne to `$PORT` |
+| `GUNICORN_*` / `DAPHNE_PROXY_HEADERS` | Optional | No | No | No | Only if overriding defaults |
+
+#### Vercel frontend configuration
+
+- Set frontend `VITE_API_BASE_URL` (or equivalent) to the Render backend API base, e.g. `https://<backend>.onrender.com/api/v1/`.
+- Ensure backend `CORS_ALLOWED_ORIGINS` includes the exact Vercel frontend origin (`https://<app>.vercel.app` and/or custom domain).
+- Ensure `CSRF_TRUSTED_ORIGINS` includes the same frontend origin if unsafe cross-origin requests are used.
+- Ensure `FLAGHUNT_WS_ALLOWED_ORIGINS` includes the frontend origin for terminal WebSockets.
+- WebSocket URL is returned by `POST /api/v1/challenges/instances/terminal-ticket/` as `ws(s)://<backend-host>/ws/challenges/instances/terminal/`; frontend should use the returned URL.
+
+#### WebSocket verification procedure (post-deploy)
+
+1. Deploy backend with Daphne ASGI, `FLAGHUNT_WS_ALLOWED_ORIGINS` set to frontend origin, and Redis channel layer configured.
+2. Authenticate as a user with an active running terminal-enabled challenge instance.
+3. `POST /api/v1/challenges/instances/terminal-ticket/` with JWT; expect `201` with `ticket`, `url`, `subprotocol=flaghunt-terminal-v1`, `expiresIn`.
+4. Connect to returned `wss://.../ws/challenges/instances/terminal/` using subprotocols `["flaghunt-terminal-v1", "<ticket>"]` from the allowed frontend origin.
+5. Expect `status connected` message; send ping/input/resize frames per protocol. Invalid origin, missing ticket, reused ticket, expired ticket, or unavailable instance must be rejected.
+6. Confirm disconnect cleans up session; ticket cannot be reused.
 
 ## 4. Database: backup, restore, migration, rollback
 
@@ -397,13 +501,24 @@ npm run build
 
 ## 10. Known risks and unresolved items
 
-- No live deployment, domain, TLS certificate, proxy, Redis auth, monitoring, or
-  off-host backup has been exercised here. Docker runtime verification was
-  blocked because the Linux engine was unavailable.
-- The Gunicorn pin and production dependency install are documented but not
-  locally exercised on Windows.
-- SQLite remains the active database and has the limitations above. PostgreSQL
-  is a documented migration path, not a completed migration.
+- No live Render deployment, domain, TLS certificate, managed Redis auth/TLS,
+  monitoring, or off-host backup has been exercised here. Local Docker validation
+  was performed on Docker Desktop Linux engine; Render-specific behavior still
+  requires staging verification.
+- Default production image uses **Daphne ASGI** to support HTTP + Channels
+  WebSockets. Gunicorn remains installed for WSGI-only HTTP deployments but will
+  not serve terminal WebSockets. Scale/worker strategy for ASGI on Render should
+  be validated under expected load.
+- `users.0002_repoint_admin_logentry_user_fk` was updated to be SQLite-conditional
+  because it contained SQLite-only `PRAGMA` statements that failed on PostgreSQL.
+  This makes fresh PostgreSQL migrations possible; existing SQLite-applied history
+  should be treated carefully and validated before any production migration.
+- SQLite remains the development default and has the limitations above. PostgreSQL
+  is the required production target; validate migrations/data transfer on a staging
+  PostgreSQL before cutover.
+- Media storage on container filesystem is ephemeral. Render persistent disk or
+  external object storage is required for durable uploads. Direct
+  `/media/challenge_files/` must be denied at proxy; avatars may be public.
 - CSP is report-only by default and allows inline scripts for Django admin. The
   SPA needs its own CSP at the proxy. Review reports before enforcing.
 - Rate limiting is only as consistent as the configured shared cache. Edge/WAF

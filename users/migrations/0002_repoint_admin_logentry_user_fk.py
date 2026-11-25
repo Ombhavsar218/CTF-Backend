@@ -1,6 +1,6 @@
 from django.db import migrations
 
-REPOINT_FORWARD = """
+SQLITE_REPOINT_FORWARD = """
 PRAGMA foreign_keys=OFF;
 CREATE TABLE "django_admin_log__new" (
     "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -21,7 +21,7 @@ CREATE INDEX "django_admin_log_user_id_c564eba6" ON "django_admin_log" ("user_id
 PRAGMA foreign_keys=ON;
 """
 
-REPOINT_REVERSE = """
+SQLITE_REPOINT_REVERSE = """
 PRAGMA foreign_keys=OFF;
 CREATE TABLE "django_admin_log__old" (
     "id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -41,6 +41,32 @@ CREATE INDEX "django_admin_log_content_type_id_c4bce8eb" ON "django_admin_log" (
 CREATE INDEX "django_admin_log_user_id_c564eba6" ON "django_admin_log" ("user_id");
 PRAGMA foreign_keys=ON;
 """
+
+
+def _execute_sqlite_script(schema_editor, script):
+    """Execute a multi-statement SQLite script for migration compatibility."""
+    statements = [s.strip() for s in script.split(';') if s.strip()]
+    with schema_editor.connection.cursor() as cursor:
+        for statement in statements:
+            cursor.execute(statement)
+
+
+def repoint_admin_logentry_user_fk_forward(apps, schema_editor):
+    """Repoint django_admin_log.user_id on SQLite only.
+
+    On a fresh PostgreSQL database, admin.0001_initial already creates the FK
+    against AUTH_USER_MODEL (users.User), so this SQLite-specific rebuild is not
+    needed and would fail with PRAGMA syntax.
+    """
+    if schema_editor.connection.vendor != 'sqlite':
+        return
+    _execute_sqlite_script(schema_editor, SQLITE_REPOINT_FORWARD)
+
+
+def repoint_admin_logentry_user_fk_reverse(apps, schema_editor):
+    if schema_editor.connection.vendor != 'sqlite':
+        return
+    _execute_sqlite_script(schema_editor, SQLITE_REPOINT_REVERSE)
 
 
 class Migration(migrations.Migration):
@@ -64,8 +90,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunSQL(
-            sql=REPOINT_FORWARD,
-            reverse_sql=REPOINT_REVERSE,
+        migrations.RunPython(
+            repoint_admin_logentry_user_fk_forward,
+            reverse_code=repoint_admin_logentry_user_fk_reverse,
         ),
     ]

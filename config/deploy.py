@@ -112,6 +112,7 @@ def deployment_errors(config):
     allowed_hosts = config.get('allowed_hosts') or []
     cors_allowed_origins = config.get('cors_allowed_origins') or []
     csrf_trusted_origins = config.get('csrf_trusted_origins') or []
+    websocket_allowed_origins = config.get('websocket_allowed_origins') or []
 
     if production and debug:
         errors.append('DEBUG must be False when ENVIRONMENT=production.')
@@ -159,6 +160,16 @@ def deployment_errors(config):
                 origin,
                 require_https=production,
                 allow_wildcard=True,
+            )
+        )
+
+    for origin in websocket_allowed_origins:
+        errors.extend(
+            _origin_errors(
+                'WEBSOCKET_ALLOWED_ORIGINS',
+                origin,
+                require_https=production,
+                allow_wildcard=False,
             )
         )
 
@@ -214,6 +225,11 @@ def deployment_errors(config):
                 )
 
     database_engine = str(config.get('database_engine') or '')
+    if production and database_engine.endswith('sqlite3'):
+        errors.append(
+            'SQLite is not allowed when ENVIRONMENT=production; configure '
+            'DATABASE_URL or PostgreSQL DB_* settings.'
+        )
     if (
         database_engine
         and not database_engine.endswith('sqlite3')

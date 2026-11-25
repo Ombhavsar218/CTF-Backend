@@ -162,6 +162,14 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+]
+try:
+    import whitenoise  # noqa: F401
+
+    MIDDLEWARE.append('whitenoise.middleware.WhiteNoiseMiddleware')
+except ImportError:
+    pass
+MIDDLEWARE += [
     'config.middleware.ContentSecurityPolicyMiddleware',
     'config.middleware.RequestIDMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -255,9 +263,81 @@ ASGI_APPLICATION = 'config.asgi.application'
 # DB_NAME is resolved relative to BASE_DIR for SQLite so a bare filename can
 # never silently land outside the project. Other backends take it verbatim.
 
+def _database_from_url(url):
+    parsed = urlparse(url)
+    scheme = (parsed.scheme or '').lower()
+    if scheme in {'postgres', 'postgresql', 'postgresql+psycopg', 'postgresql+psycopg2'}:
+        engine = 'django.db.backends.postgresql'
+    elif scheme in {'sqlite', 'sqlite3'}:
+        engine = 'django.db.backends.sqlite3'
+    else:
+        raise ImproperlyConfigured(
+            f'Unsupported DATABASE_URL scheme {scheme!r}; use postgres://, postgresql://, or sqlite:///.'
+        )
+
+    if engine.endswith('sqlite3'):
+        name = parsed.path or ''
+        if name.startswith('/'):
+            # sqlite:///absolute/path or sqlite:///relative.db (three slashes)
+            # Keep Windows drive paths and relative names usable.
+            if name.startswith('/') and len(name) > 3 and name[2] == ':':
+                name = name.lstrip('/')
+            elif url.startswith('sqlite:////'):
+                name = name  # absolute unix path
+            else:
+                name = name.lstrip('/')
+        name = name or 'db.sqlite3'
+        db_name = Path(name)
+        if not db_name.is_absolute():
+            db_name = BASE_DIR / db_name
+        return {
+            'ENGINE': engine,
+            'NAME': db_name,
+        }
+
+    from urllib.parse import parse_qs, unquote
+
+    options = {}
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    sslmode = (query.get('sslmode') or [None])[0] or _env('DB_SSLMODE')
+    if sslmode:
+        options['sslmode'] = sslmode
+    connect_timeout = (query.get('connect_timeout') or [None])[0] or _env('DB_CONNECT_TIMEOUT')
+    if connect_timeout is not None:
+        try:
+            options['connect_timeout'] = int(connect_timeout)
+        except ValueError:
+            pass
+    conn_max_age_raw = (query.get('conn_max_age') or [None])[0]
+    try:
+        conn_max_age = int(conn_max_age_raw) if conn_max_age_raw is not None else _env_int('DB_CONN_MAX_AGE', 60)
+    except ValueError:
+        conn_max_age = _env_int('DB_CONN_MAX_AGE', 60)
+
+    config = {
+        'ENGINE': engine,
+        'NAME': unquote(parsed.path.lstrip('/')),
+        'USER': unquote(parsed.username or ''),
+        'PASSWORD': unquote(parsed.password or ''),
+        'HOST': parsed.hostname or '',
+        'PORT': str(parsed.port) if parsed.port else _env('DB_PORT', ''),
+        'CONN_MAX_AGE': conn_max_age,
+    }
+    if options:
+        config['OPTIONS'] = options
+    return config
+
+
+DATABASE_URL = _env('DATABASE_URL')
 DB_ENGINE = _env('DB_ENGINE', 'django.db.backends.sqlite3')
 
-if DB_ENGINE.endswith('sqlite3'):
+if DATABASE_URL:
+    DATABASES = {
+        'default': _database_from_url(DATABASE_URL),
+    }
+    DB_ENGINE = DATABASES['default']['ENGINE']
+    DB_NAME = DATABASES['default']['NAME']
+elif DB_ENGINE.endswith('sqlite3'):
     DB_NAME = _env_path('DB_NAME', BASE_DIR / 'db.sqlite3')
     DATABASES = {
         'default': {
@@ -281,9 +361,18 @@ else:
             'CONN_MAX_AGE': _env_int('DB_CONN_MAX_AGE', 60),
         }
     }
+    _db_options = {}
     _db_sslmode = _env('DB_SSLMODE')
     if _db_sslmode:
-        DATABASES['default']['OPTIONS'] = {'sslmode': _db_sslmode}
+        _db_options['sslmode'] = _db_sslmode
+    _db_connect_timeout = _env('DB_CONNECT_TIMEOUT')
+    if _db_connect_timeout is not None:
+        try:
+            _db_options['connect_timeout'] = int(_db_connect_timeout)
+        except ValueError:
+            pass
+    if _db_options:
+        DATABASES['default']['OPTIONS'] = _db_options
 
 
 # Shared cache for throttle counters. Development keeps Django's per-process
@@ -363,7 +452,7 @@ CSRF_TRUSTED_ORIGINS = _env_list('CSRF_TRUSTED_ORIGINS')
 # this explicitly when the SPA is served from a different origin.
 _WS_DEFAULT_ORIGINS = list(dict.fromkeys(
     list(CORS_ALLOWED_ORIGINS)
-    + ['http://localhost:8000', 'http://127.0.0.1:8000']
+    + ([] if IS_PRODUCTION else ['http://localhost:8000', 'http://127.0.0.1:8000'])
 ))
 WEBSOCKET_ALLOWED_ORIGINS = _env_list(
     'FLAGHUNT_WS_ALLOWED_ORIGINS', _WS_DEFAULT_ORIGINS
@@ -715,6 +804,19 @@ STATIC_URL = 'static/'
 # Only used by `manage.py collectstatic`; a relative value is anchored to BASE_DIR.
 STATIC_ROOT = _env_path('STATIC_ROOT', BASE_DIR / 'staticfiles')
 
+# WhiteNoise can serve collected static files directly from Gunicorn.
+# Compressed storage avoids manifest-file runtime fragility while still serving
+# compressed assets efficiently.
+if 'whitenoise.middleware.WhiteNoiseMiddleware' in MIDDLEWARE:
+    STORAGES = {
+        'default': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+        },
+    }
+
 MEDIA_URL = '/media/'
 
 # Environment-configurable so production can put uploaded files on a dedicated
@@ -745,6 +847,7 @@ _deployment_errors = deployment_errors(
         'allowed_hosts': ALLOWED_HOSTS,
         'cors_allowed_origins': CORS_ALLOWED_ORIGINS,
         'csrf_trusted_origins': CSRF_TRUSTED_ORIGINS,
+        'websocket_allowed_origins': WEBSOCKET_ALLOWED_ORIGINS,
         'cache_url': CACHE_URL,
         'celery_broker_url': CELERY_BROKER_URL,
         'secure_ssl_redirect': SECURE_SSL_REDIRECT,

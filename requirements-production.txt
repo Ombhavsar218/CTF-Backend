@@ -1,12 +1,11 @@
-# Production-only web server.
+# Production web image dependencies.
 #
-# The development environment and the Celery Docker image use requirements.txt.
-# Install this file only in the production web environment:
+# The development environment keeps using requirements.txt directly.
+# Install this file in the production/Docker web environment:
 #
 #   python -m pip install -r requirements-production.txt
 #
-# Gunicorn is a Linux/Unix WSGI server and does not run on the Windows
-# development host. This pin has not been exercised by the local test suite;
-# rebuild and smoke-test it in the target image before release.
 -r requirements.txt
 gunicorn==23.0.0
+whitenoise==6.8.2
+psycopg[binary]==3.2.6

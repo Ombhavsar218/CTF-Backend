@@ -1,24 +1,75 @@
-# Keep the image small and free of machine-specific state or secrets.
-venv/
-.venv/
+# Keep the Docker build context small and free of secrets/local state.
+
+# VCS / editor / OS
 .git/
 .gitignore
+.gitattributes
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Python caches / artifacts
 __pycache__/
 *.py[cod]
+*$py.class
 *.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# Local data - the real database is bind-mounted at runtime, never baked in.
-db.sqlite3
-db.sqlite3.*
-media/
-staticfiles/
+# Virtual environments
+venv/
+.venv/
+env/
 
-# Secrets and local overrides.
+# Local secrets and env files (keep examples)
 .env
 .env.*
 !.env.example
 
-# Logs and editor/OS noise.
+# Local databases / backups / runtime data
+db.sqlite3
+db.sqlite3*
+*.sqlite3
+*.sqlite3-*
+*.bak
+backups/
+media/
+staticfiles/
+
+# Logs and temp files
 *.log
-.DS_Store
-Thumbs.db
+logs/
+tmp/
+temp/
+
+# Node/frontend artifacts not needed in backend image
+node_modules/
+
+# Local debug/test artifacts
+debug_*.py
+check_*.py
+fix_*.py
+try_*.py
+search_*.py
+test_*.py
+*_test.log
+full-test*.log
+err.txt
+out.txt
+out2.txt
+post_j20_*
+j17_*
+j18_*
+j19_*
+*.zip
+
+# Docker/dev files not required at runtime
+docker-compose*.yml
+compose*.yml
+
+# Docs are not required at runtime, but keeping them is harmless; exclude large evidence.
+docs/evidence/
