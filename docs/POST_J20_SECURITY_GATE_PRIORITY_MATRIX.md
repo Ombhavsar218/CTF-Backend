@@ -1,0 +1,65 @@
+# Post-J.20 Security Gate Priority Matrix (Planning Assessment)
+
+**Repository:** `E:\Flag-hunt\ctf-platform-be`  
+**HEAD:** `b3655841ffc0a0cea2cfd33ad56d7ed355a4d068` (`main`)  
+**Date:** 2026-11-17 (planning assessment)  
+**Basis:** `PHASE_2L_2J_20_*` docs, `PHASE_2L_2J_1_SECURITY_GATE_REGISTER.md`, `PHASE_2L_2J_14_REMEDIATION_ROADMAP.md`, `PHASE_2L_2J_14_GATE_EVIDENCE_MATRIX.md`
+
+**Mandatory status:** **NOT READY — LIVE FIREWALL INTEGRATION NOT AUTHORIZED**  
+**T-11, T-13, T-27:** **OPEN — ACCEPTANCE REQUIRED**
+
+## 1. Rules
+
+- Statuses and evidence reflect inspected J.20/register/roadmap artifacts; historical findings not assumed accurate without evidence.
+- **No gate upgraded to closed.** Dispositions remain evidence-bound (OPEN / PARTIALLY RESOLVED / BLOCKED / ACCEPTANCE REQUIRED).
+- Priorities are planning recommendations: **Critical / High / Medium / Low** based on boundary impact, exploitability if later enabled, evidence confidence, and mock-only feasibility.
+
+## 2. Requested focus areas (N-02, I-07/I-08/I-09, RR-01–RR-07, M-01/M-06, N-03/N-04, H-01–H-05)
+
+| Finding | Current status | Existing implementation and test evidence | Remaining gap | Security impact | Mock-only resolvable? | Required acceptance / external dependency | Priority |
+|---|---|---|---|---|---|---|---|
+| **N-02** | Partially resolved | Schema-v1 module/boundaries, canonical persistence/trusted read-back in covered paths (J.3–J.7+), J.15/J.16/J.18 covered contract/boundary evidence and tests | End-to-end envelope/legacy migration, adapters/rejection-quarantine, universal canonical authority/read-back/response across all surfaces, exhaustive adversarial/fault-injection | High: authority/confusion, legacy/ambiguous policy acceptance | **Yes (partial/scoped)** | Schema/protocol owners, security review; no host ops | **Critical** |
+| **I-07** | Open / partially resolved (covered) | J.15 canonical digest/ID checks in covered paths; J.16 adversarial validation/no-side-effect coverage in inspected paths; strict helper contract rejects unknown fields in mock scope | Universal entry-point/alias/ambiguous-field/legacy-field rejection and end-to-end propagation | High: validation bypass/canonical gate evasion in uncovered paths | **Yes** | Schema/validation workstream owner, security review | **Critical** |
+| **I-08** | Open | Partial bounded mappings in selected paths; J.16 error-boundary inventory; J.19 bounded adapter/route checks in tested paths | Universal sanitized bounded error mapping and leakage-negative proof across persistence/transport/log/audit/response paths | High: internal detail/secret/socket/env leakage | **Yes** | Persistence/error-mapping owner, security review | **High** |
+| **I-09** | Open / partially resolved (improved, covered construction) | J.16: implicit `strict_auth=False` construction without explicit provider rejected fail-closed; explicit test-only injection preserved; 45 passed adversarial/construction tests | Removal/isolation from all live-capable/import/config paths; universal closure and deployment assertions | High: trusted-identity bypass footgun if selectable | **Yes (partial)** | Controller/auth owner, security review | **High** |
+| **RR-01** | Open / partially resolved (covered) | J.15 canonical service-boundary validation; J.16 negative/no-side-effect coverage in inspected paths | Universal canonical `request_id` validation at all broker/controller/helper/persistence/manager entry points; DB/app checks as designed | Medium-High: correlation/evidence/authority confusion | **Yes** | Protocol/persistence owners | **Critical** |
+| **RR-02** | Open / partially resolved (covered) | J.15/J.16 covered validation and adversarial checks | Universal canonical `operation_id` validation/binding/correlation semantics | Medium-High | **Yes** | Protocol/controller owners | **Critical** |
+| **RR-03** | Open / partially resolved | Durable idempotency/digest/conflict/replay handling in covered cases (J.8/J.10/J.12/J.13/J.15–J.18 evidence) | Global per-receiver canonical scope, migration, DB constraints, exhaustive replay/uncertain matrices | High: unsafe replay/conflict/duplication | **Yes (additive)** | Persistence/controller owners | **Critical** |
+| **RR-04** | Open / partially resolved (covered) | Bool/negative/type/range checks in covered contract/service paths (J.4/J.16 evidence) | Universal DB/app/legacy-path enforcement and migration | Medium-High: binding/version confusion | **Yes** | Schema/persistence owners | **High** |
+| **RR-05** | Open / partially improved (covered per-policy) | Trusted read-back/fail-closed handling, explicit per-policy inventory/outcomes, no-false-promotion evidence (J.9–J.13/J.17/J.18; J.18 16 passed, focused 218, full 809 reported) | Complete cross-table/orphan/full-inventory semantics, exhaustive state/race/hook/commit-boundary matrices, host evidence | High: recovery correctness/state divergence | **Partially** (mock-only contract/evidence expansion feasible) | Controller/recovery owner; host evidence blocked | **Critical** |
+| **RR-06** | Open / partially improved (covered) | Read-time trusted digest validation; J.17 append-only triggers/FK-enforcing covered paths; tamper/corrupt fail-closed in covered tests | DB-enforced digest CHECK constraints/migrations, full append-only/immutability/FK/WAL/concurrency guarantees | High: persistence integrity/tamper resistance | **Yes (additive, careful)** | Persistence owner | **Critical** |
+| **RR-07** | Open | Partial bounded mappings in selected paths | Universal sanitized bounded error mapper, scrub logs/audit/transport responses, leakage-negative tests | Medium-High: information leakage | **Yes** | Error-handling/persistence owners | **High** |
+| **M-01** | Partially resolved | Durable idempotency, bounded waits/deadlines, conflict/replay handling and hardening in covered cases (J.8/J.10/J.17/J.18) | Global scope/migration and exhaustive interruption/response-loss/uncertain-outcome closure | Medium-High: retried/mutating operation safety | **Yes (additive)** | Controller persistence owner | **High** |
+| **M-06** | Partially resolved (covered improvements) | Canonical persistence/trusted read-back (J.6/J.7), append-only triggers/FK-enforcing covered paths (J.17), lifecycle/evidence matrices (J.18) | DB-enforced digest CHECKs/migrations, full append-only/immutability guarantees, per-family states, exhaustive integrity/atomicity/recovery evidence | High: evidence/state integrity | **Yes (additive, careful)** | Controller persistence owner | **Critical** |
+| **N-03** | Partially resolved | Register/roadmap/audit propagation and J.20 traceability reconciliation | Closure or formal disposition evidence for I-07/I-08/I-09 with implementation/test/acceptance records as applicable | Medium: governance/traceability gaps mask residual risk | **Yes (documentation/traceability)** | Architecture/residual owners, security review | **Medium** |
+| **N-04** | Partially resolved (strengthened mock-only audited runtime evidence, not closed) | Fail-closed adapters/DI/routes in audited paths; J.19 inventory and negative tests (28 broker, 25 manager/runtime, 27 regressions), full suites/check reported passed | Compatibility export isolation/removal review in all contexts, packaging/deployment/host/runtime evidence, fixed boundary if runtime retained, independent closure, T-27 disposition | High (if runtime later enabled): host-root-equivalent authority bypass | **Partially** (source/packaging review mock-feasible) | Broker/manager/runtime owners, security reviewer; T-27 authority context | **High** |
+| **H-01** | Open / partially resolved (design) / blocked (host) | Target design documented (2H/2J plans) | Direct-bind UDS lifecycle implementation and pinned-host proof (setgid/inheritance/modes/cross-UID/stale/live/restart/ID-drift) | High: transport trust foundation | **No** | Transport/deployment/platform owners, security review; isolated disposable host lab + approvals | **High** (blocked) |
+| **H-02** | Partially resolved (strengthened mock-only audited runtime evidence, not closed) | Same audited fail-closed/runtime evidence as N-04 (J.19) | Deployment/host/runtime enforcement proof and no Docker socket/group/API for restricted components; T-27 disposition | High: boundary bypass / host-root-equivalent side channel | **Partially** | Broker/manager/runtime owners, security review; host/runtime evidence | **High** |
+| **H-03** | Open / partially resolved (mock-path) | Strict auth/mock peer injection in covered paths; J.16 adversarial auth/identity tests (45 passed, covered) | Real `SO_PEERCRED` transport/adapters, remove caller-supplied identity authority on live paths, universal enforcement | High: identity spoofing/auth bypass | **No** (real transport/host) | Controller/broker/transport owners, security review; authorized host work | **Critical** (blocked for target closure) |
+| **H-04** | Open / blocked | Target design documented; no direct UDS mutual verification implementation evidenced | Direct-bind UDS mutual peer verification, live-path hardening, pinned-host transport evidence | High: manager-broker trust boundary | **No** | Manager/broker owners, security review; authorized host environment | **Critical** (blocked) |
+| **H-05** | Partially resolved | Schema-v1 helpers/integration in covered paths (J.3–J.7+), J.15 boundary hardening (11 passed), helper contract strict in mock scope | End-to-end envelope migration, legacy removal/rejection/quarantine, universal canonical authority/responses/read-back | High: contract confusion/inconsistent enforcement | **Yes (partial)** | Protocol/schema/controller/helper owners, security review | **Critical** |
+
+## 3. Additional tracked gates (for completeness)
+
+| Finding | Current status | Existing evidence (summary) | Remaining gap | Mock-only resolvable? | Acceptance/external dependency | Priority |
+|---|---|---|---|---|---|---|
+| **M-02** | Open / blocked | Target design documented | Safe UDS lifecycle implementation and host-lab evidence | **No** | Host lab/transport owners | **High** (blocked) |
+| **M-03** | Partially resolved | Documentation/tracking improved (J.20 reconciliation) | Closure/formal disposition evidence for residuals | **Yes** | Architecture/residual owners | **Medium** |
+| **M-04** | Partially resolved (doc lineage) | Prior mapping docs; partial regressions reported | Executed per-threat validation evidence for applicable mappings | **Yes** (mock-feasible mappings) | Validation/test owner | **Medium** |
+| **M-05** | Partially resolved (doc lineage) | Threat-register updates; J.19 subset evidence | Control implementation/validation for added threats | **Partially** | Security/test owners | **Medium** |
+| **M-07** | Open / partially resolved (code/config partial) | Fail-closed allowlist logic in code | Verified service IDs, startup/deployment assertions, host evidence | **Partially** | Deployment/platform owner; host evidence | **High** |
+| **M-08** | Partially resolved | Strict helper contract validation in mock scope | Full target contract/timeout/envelope/rule-schema alignment and integration evidence | **Yes** (contract work) | Controller/helper owners | **High** |
+| **M-09** | Open / blocked | Validation plans exist | Approved isolated host-lab execution, rollback/evidence bundle, independent review | **No** | Host-validation lead, approvals | **Critical** (blocked gate) |
+| **N-01** | Open / partially resolved (design) / blocked | Design documented | Host implementation/proof of safe socket-group mechanism | **No** | Transport/deployment owners | **High** (blocked) |
+| **T-11** | **OPEN — ACCEPTANCE REQUIRED** | Partial mitigations in covered mock paths | Formal named-authority acceptance or mitigation/removal closure evidence; host isolation/monitoring as applicable | **No** | Project owner & security authority (not established) | **Critical** (acceptance) |
+| **T-13** | **OPEN — ACCEPTANCE REQUIRED** | Mock helper contract constraints only | Real helper hardening/capability/isolation/host evidence and/or formal acceptance | **No** | Project owner & security authority (not established) | **Critical** (acceptance) |
+| **T-27** | **OPEN — ACCEPTANCE REQUIRED** | Fail-closed adapters and J.19 audited runtime source/test evidence; N-04 partial | Packaging/deployment/host/runtime evidence, fixed boundary/removal evidence, formal acceptance or removal disposition | **No** | Project owner & security authority (not established); runtime owners | **Critical** (acceptance) |
+
+## 4. Priority summary
+
+- **Critical (address first where feasible):** N-02, H-05, I-07, RR-01–RR-03, RR-05, RR-06, M-06 (mock-feasible subsets), and blocked/acceptance-critical items H-03/H-04/M-09/T-11/T-13/T-27 (cannot be closed now).
+- **High:** I-08, I-09, RR-04, RR-07, M-01, M-07, M-08, N-04, H-01, H-02, M-02, N-01.
+- **Medium:** M-03, M-04, M-05, N-03.
+- **Low:** none explicitly prioritized above critical/high/medium given current evidence gaps.
+
+**No closures claimed.**

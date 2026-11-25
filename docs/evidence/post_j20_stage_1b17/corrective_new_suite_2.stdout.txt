@@ -1,0 +1,67 @@
+.............F......F......                                              [100%]
+================================== FAILURES ===================================
+________ test_r16_02_verifying_recovery_persists_reconciliation_status ________
+
+    def test_r16_02_verifying_recovery_persists_reconciliation_status():
+        store = _store()
+        svc = _svc(store)
+        pid = "b17-prom-verifying"
+>       digest, _oid = _verifying_with_evidence(store, svc, pid)
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:237: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+store = <broker.firewall_controller_service.ownership_store.ControllerOwnershipStore object at 0x000001E5C98F6500>
+svc = <broker.firewall_controller_service.controller_service.FirewallControllerService object at 0x000001E5C98F66E0>
+pid = 'b17-prom-verifying'
+
+    def _verifying_with_evidence(store, svc, pid):
+        """Install, persist verification evidence, then simulate the VERIFYING crash point."""
+        digest = _installed(store, svc, pid)
+        rec = store.get_by_policy(pid, 1)
+        oid = rec['ownership_record_id']
+        store.raise_after_evidence = True
+>       with pytest.raises(BrokerDBError):
+E       Failed: DID NOT RAISE <class 'broker.app.db.BrokerDBError'>
+
+broker\tests\test_post_j20_stage_1b3_durable_crash_recovery.py:281: Failed
+_________ test_r16_06_full_scan_keeps_overlapping_identities_distinct _________
+
+    def test_r16_06_full_scan_keeps_overlapping_identities_distinct():
+        store = _store()
+        svc = _svc(store)
+        for pid in ("p1", "p10"):
+            _installed(store, svc, pid)
+        store.create_idempotency_record("b17-full-p10", "install_policy", "c" * 64,
+                                        resource_key="p10:1", ownership_record_id="o10",
+                                        lifecycle_state="INSTALLING")
+>       res = svc.reconcile_pending_operations({**_op_req("unused", "a" * 64), "policy_id": None})
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+broker\firewall_controller_service\controller_service.py:1745: in reconcile_pending_operations
+    self.validator.validate(req)
+broker\firewall_controller_service\request_validator.py:9: in validate
+    return _validate_request(req)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+req = {'compiled_rule_digest': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'idempotency_key': 'a586225b-0657-483b-bf74-cad2e6d49c9d', 'instance_id': 'i1', 'network_id': 'n1', ...}
+
+    def _validate_request(req: Dict[str, Any]) -> ControllerRequest:
+        required = ['request_id', 'operation_id', 'idempotency_key', 'policy_id', 'policy_version', 'compiled_rule_digest']
+        for r in required:
+            if r not in req or req[r] is None or req[r] == '':
+>               raise FirewallControllerRequestError(f"Missing {r}")
+E               broker.app.firewall_controller_contract.FirewallControllerRequestError: Missing policy_id
+
+broker\app\firewall_controller_contract.py:56: FirewallControllerRequestError
+============================== warnings summary ===============================
+venv\lib\site-packages\pydantic\_internal\_config.py:291
+  E:\Flag-hunt\ctf-platform-be\venv\lib\site-packages\pydantic\_internal\_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_02_verifying_recovery_persists_reconciliation_status
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_06_full_scan_keeps_overlapping_identities_distinct
+2 failed, 25 passed, 1 warning in 3.72s

@@ -1,0 +1,77 @@
+﻿pytest.exe : E:\Flag-hunt\ctf-platform-be\venv\lib\site-packages\pytest_asyncio\plugin.py:208: 
+PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+At line:1 char:129
++ ... w(); $out = & 'E:\Flag-hunt\ctf-platform-be\venv\Scripts\pytest.exe'  ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (E:\Flag-hunt\ct...cope" is unset.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of 
+pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop 
+scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", 
+"class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+........................................................................ [  7%]
+........................................................................ [ 14%]
+........................................................................ [ 22%]
+........................................................................ [ 29%]
+........................................................................ [ 37%]
+........................................................................ [ 44%]
+........................................................................ [ 51%]
+........................................................................ [ 59%]
+........................................................................ [ 66%]
+...................................F.................................... [ 74%]
+........................................................................ [ 81%]
+........................................................................ [ 88%]
+........................................................................ [ 96%]
+....................................                                     [100%]
+================================== FAILURES ===================================
+______________ test_concurrent_same_key_revoke_retries_converge _______________
+
+    def test_concurrent_same_key_revoke_retries_converge():
+        store = _store('f01-concurrent.db')
+        backend = _CountingBackend(authorized_backend())
+        svc = _svc(store, backend)
+        base = _install_active(svc, pid='f01-concurrent')
+        key = 'f01-concurrent-key'
+    
+        backend.inner.ctrl.fail_revoke = True
+        assert svc.revoke_policy(_new_request(base, idempotency_key=key))['status'] == 'error'
+        backend.inner.ctrl.fail_revoke = False
+    
+        barrier = threading.Barrier(2)
+        results = []
+        errors = []
+        lock = threading.Lock()
+    
+        def worker():
+            try:
+                barrier.wait(timeout=5)
+                res = svc.revoke_policy(_new_request(base, idempotency_key=key))
+                with lock:
+                    results.append(res)
+            except Exception as e:  # pragma: no cover - failure reporting
+                with lock:
+                    errors.append(e)
+    
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            futures = [ex.submit(worker) for _ in range(2)]
+            for f in as_completed(futures):
+                f.result(timeout=20)
+    
+>       assert not errors, [type(e).__name__ for e in errors]
+E       AssertionError: ['FirewallControllerIdempotencyError']
+E       assert not [FirewallControllerIdempotencyError('Operation ledger state conflict')]
+
+broker\tests\test_firewall_controller_revoke_recovery_and_idempotency_hardening.py:450: AssertionError
+============================== warnings summary ===============================
+venv\lib\site-packages\pydantic\_internal\_config.py:291
+  E:\Flag-hunt\ctf-platform-be\venv\lib\site-packages\pydantic\_internal\_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_concurrent_same_key_revoke_retries_converge
+1 failed, 971 passed, 1 warning in 342.06s (0:05:42)
+

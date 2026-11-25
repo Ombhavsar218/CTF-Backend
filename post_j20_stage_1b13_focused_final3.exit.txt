@@ -1,0 +1,3 @@
+﻿COMMAND: pytest <25 focused files> -q (full list in report)
+---EXIT:0---
+SECONDS:245.9637679

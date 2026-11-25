@@ -1,0 +1,4 @@
+COMMAND=E:\Flag-hunt\ctf-platform-be\venv\Scripts\python.exe manage.py check
+WORKDIR=E:\Flag-hunt\ctf-platform-be
+DURATION_SECONDS=17.18
+EXIT=0

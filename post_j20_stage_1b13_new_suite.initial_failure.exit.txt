@@ -1,0 +1,4 @@
+---EXIT:1---
+COMMAND: Set-Location 'E:\Flag-hunt\ctf-platform-be'; & 'E:\Flag-hunt\ctf-platform-be\venv\Scripts\pytest.exe' broker/tests/test_post_j20_stage_1b13_canonical_validation_sanitization.py -q
+STATUS: INITIAL FAILURE (preserved; corrective fixes applied before rerun)
+SECONDS: 15.67 (approx, from pytest summary)

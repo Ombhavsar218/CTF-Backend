@@ -1,0 +1,5 @@
+COMMAND=E:\Flag-hunt\ctf-platform-be\venv\Scripts\python.exe -m pytest broker/tests/test_post_j20_stage_1b13_canonical_validation_sanitization.py broker/tests/test_post_j20_stage_1b15_boundary_persistence_integrity.py broker/tests/test_firewall_controller_rule_schema_v1.py broker/tests/test_post_j20_stage_1a_canonical_authority.py broker/tests/test_firewall_controller_j15_canonical_authority.py -q
+WORKDIR=E:\Flag-hunt\ctf-platform-be
+STARTED=00:00:37.3303715
+DURATION_SECONDS=37.33
+EXIT=0

@@ -1,0 +1,50 @@
+﻿........................................................................ [  8%]
+........................................................................ [ 16%]
+........................................................................ [ 25%]
+........................................................................ [ 33%]
+........................................................................ [ 42%]
+........................................................................ [ 50%]
+......................................................F................. [ 59%]
+........................................................................ [ 67%]
+........................................................................ [ 75%]
+........................................................................ [ 84%]
+........................................................................ [ 92%]
+..............................................................           [100%]
+================================== FAILURES ===================================
+_______ test_xproc_conflicting_idempotency_repeatable_no_false_success ________
+
+    def test_xproc_conflicting_idempotency_repeatable_no_false_success():
+        runs = 10
+        for _ in range(runs):
+            tmp = tempfile.mkdtemp()
+            db_path = os.path.join(tmp, "c.db")
+            be_path = os.path.join(tmp, "be.json")
+            _be_save(be_path, {"installed": {}, "verified": [], "revoked": [], "idempotency": {}})
+            ctx = mp.get_context("spawn")
+            key = "kxpc2-j8"
+            with ProcessPoolExecutor(max_workers=2, mp_context=ctx) as ex:
+                f1 = ex.submit(_worker_install_conflict, (db_path, be_path, key, "xpc2", False))
+                f2 = ex.submit(_worker_install_conflict, (db_path, be_path, key, "xpc2", True))
+                r1 = f1.result(timeout=30)
+                r2 = f2.result(timeout=30)
+            results = [r1, r2]
+            oks = [r for r in results if r.get("ok")]
+            errors = [r for r in results if not r.get("ok")]
+            # Conflicting same-key different payload must not both succeed.
+            assert len(oks) <= 1
+            # At least one side must observe rejection/error; conflict should be classified.
+            assert len(errors) >= 1
+>           assert any(r.get("error") == "FirewallControllerIdempotencyError" for r in errors)
+E           assert False
+E            +  where False = any(<generator object test_xproc_conflicting_idempotency_repeatable_no_false_success.<locals>.<genexpr> at 0x0000016638DAD2A0>)
+
+broker\tests\test_firewall_controller_j8_hardening.py:153: AssertionError
+============================== warnings summary ===============================
+venv\lib\site-packages\pydantic\_internal\_config.py:291
+  E:\Flag-hunt\ctf-platform-be\venv\lib\site-packages\pydantic\_internal\_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED broker/tests/test_firewall_controller_j8_hardening.py::test_xproc_conflicting_idempotency_repeatable_no_false_success
+1 failed, 853 passed, 1 warning in 262.93s (0:04:22)

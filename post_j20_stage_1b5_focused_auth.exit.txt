@@ -1,0 +1,3 @@
+EXIT=0
+SUMMARY=136 passed, 1 warning in 59.15s
+SCOPE=broker/tests/test_firewall_controller_j16_authorization_identity.py broker/tests/test_firewall_controller_identifier_validation_entrypoints.py broker/tests/test_firewall_controller_transport_mock.py

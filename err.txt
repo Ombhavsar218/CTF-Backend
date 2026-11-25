@@ -1,0 +1,72 @@
+E:\Flag-hunt\ctf-platform-be\venv\Scripts\python.exe : 
+E:\Flag-hunt\ctf-platform-be\venv\lib\site-packages\pytest_asyncio\plugin.py:208: PytestDeprecationWarning: The 
+configuration option "asyncio_default_fixture_loop_scope" is unset.
+At line:1 char:1
++ E:\Flag-hunt\ctf-platform-be\venv\Scripts\python.exe -m pytest broker ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (E:\Flag-hunt\ct...cope" is unset.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of 
+pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop 
+scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", 
+"class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+============================= test session starts =============================
+platform win32 -- Python 3.10.0, pytest-8.3.4, pluggy-1.7.0
+rootdir: E:\Flag-hunt\ctf-platform-be
+plugins: anyio-4.6.2, asyncio-0.24.0
+asyncio: mode=strict, default_loop_scope=None
+collected 1 item
+
+broker\tests\test_firewall_controller_active_enforcement.py F            [100%]
+
+================================== FAILURES ===================================
+_______________________ test_install_creates_ownership ________________________
+
+    def test_install_creates_ownership():
+        svc = FirewallControllerService(allowed_uids={1000}, allowed_gids={1000})
+        req = _req('p100')
+>       res = svc.install_policy(req)
+
+broker\tests\test_firewall_controller_active_enforcement.py:25: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+broker\firewall_controller_service\controller_service.py:233: in install_policy
+    return self._call("install_policy", req)
+broker\firewall_controller_service\controller_service.py:121: in _call
+    self._check_lifecycle_transition(prev, 'VALIDATING')
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <broker.firewall_controller_service.controller_service.FirewallControllerService object at 0x00000243D85C6470>
+current_state = 'INSTALLING', next_state = 'VALIDATING'
+
+    def _check_lifecycle_transition(self, current_state: str, next_state: str):
+        allowed = {
+            'REQUESTED': {'VALIDATING', 'FAILED'},
+            'VALIDATING': {'INSTALLING', 'FAILED'},
+            'INSTALLING': {'VERIFYING', 'CLEANUP_PENDING', 'FAILED'},
+            'VERIFYING': {'VERIFIED', 'CLEANUP_PENDING', 'FAILED'},
+            'VERIFIED': {'ACTIVE', 'REVOKING', 'FAILED'},
+            'ACTIVE': {'REVOKING'},
+            'REVOKING': {'REVOKED', 'CLEANUP_PENDING'},
+            'CLEANUP_PENDING': {'REVOKING', 'REVOKED', 'ORPHANED', 'FAILED'},
+            'FAILED': {'CLEANUP_PENDING', 'ORPHANED'},
+            'REVOKED': set(),
+            'ORPHANED': {'CLEANUP_PENDING'},
+        }
+        if current_state in allowed and next_state in allowed[current_state]:
+            return True
+>       raise PermissionError(f'Invalid lifecycle transition {current_state} -> {next_state}')
+E       PermissionError: Invalid lifecycle transition INSTALLING -> VALIDATING
+
+broker\firewall_controller_service\controller_service.py:60: PermissionError
+============================== warnings summary ===============================
+venv\lib\site-packages\pydantic\_internal\_config.py:291
+  E:\Flag-hunt\ctf-platform-be\venv\lib\site-packages\pydantic\_internal\_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED broker/tests/test_firewall_controller_active_enforcement.py::test_install_creates_ownership
+======================== 1 failed, 1 warning in 0.71s =========================

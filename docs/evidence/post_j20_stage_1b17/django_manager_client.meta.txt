@@ -1,0 +1,4 @@
+COMMAND=E:\Flag-hunt\ctf-platform-be\venv\Scripts\python.exe manage.py test instances.tests.test_manager_client -v 1
+WORKDIR=E:\Flag-hunt\ctf-platform-be
+DURATION_SECONDS=18.2
+EXIT=0

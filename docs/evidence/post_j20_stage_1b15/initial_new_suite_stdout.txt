@@ -1,0 +1,117 @@
+pytest.exe : E:\Flag-hunt\ctf-platform-be\venv\lib\site-packages\pytest_asyncio\plugin.py:208: 
+PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+At line:6 char:8
++ $out = & 'E:\Flag-hunt\ctf-platform-be\venv\Scripts\pytest.exe' 'brok ...
++        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (E:\Flag-hunt\ct...cope" is unset.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of 
+pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop 
+scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", 
+"class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+FFFF......F..........                                                    [100%]
+================================== FAILURES ===================================
+_____ test_service_rejects_mixed_canonical_rules_with_legacy_flat_fields ______
+
+tmp_path = WindowsPath('C:/Users/bhavs/AppData/Local/Temp/pytest-of-bhavs/pytest-25/test_service_rejects_mixed_can0')
+
+    def test_service_rejects_mixed_canonical_rules_with_legacy_flat_fields(tmp_path):
+        store = ControllerOwnershipStore(db_path=str(tmp_path / "mixed-fields.db"))
+        svc = _svc(store)
+        req = _install_req(
+            "b15-mixed-fields",
+            ip_version="ipv4",
+            source_component="broker",
+            targets=[{"network_id": "n1", "ip": "10.0.0.5"}],
+        )
+        key = req["idempotency_key"]
+    
+>       with pytest.raises(FirewallControllerRequestError):
+E       Failed: DID NOT RAISE <class 'broker.app.firewall_controller_contract.FirewallControllerRequestError'>
+
+broker\tests\test_post_j20_stage_1b15_boundary_persistence_integrity.py:153: Failed
+________ test_service_rejects_legacy_compiled_rules_before_persistence ________
+
+tmp_path = WindowsPath('C:/Users/bhavs/AppData/Local/Temp/pytest-of-bhavs/pytest-25/test_service_rejects_legacy_co0')
+
+    def test_service_rejects_legacy_compiled_rules_before_persistence(tmp_path):
+        store = ControllerOwnershipStore(db_path=str(tmp_path / "legacy-compiled.db"))
+        svc = _svc(store)
+        req = _install_req(
+            "b15-legacy-compiled",
+            rules=None,
+            compiled_rule_digest="a" * 64,
+            compiled=_legacy_compiled("b15-legacy-compiled"),
+        )
+        req.pop("rules", None)
+        req.pop("required_families", None)
+        key = req["idempotency_key"]
+    
+>       with pytest.raises(FirewallControllerRequestError):
+E       Failed: DID NOT RAISE <class 'broker.app.firewall_controller_contract.FirewallControllerRequestError'>
+
+broker\tests\test_post_j20_stage_1b15_boundary_persistence_integrity.py:172: Failed
+_____ test_mock_adapter_rejects_legacy_compiled_rules_before_state_change _____
+
+    def test_mock_adapter_rejects_legacy_compiled_rules_before_state_change():
+        c = MockFirewallController()
+        req = _install_req(
+            "b15-adapter-legacy",
+            rules=None,
+            compiled_rule_digest="a" * 64,
+            compiled=_legacy_compiled("b15-adapter-legacy"),
+        )
+        req.pop("rules", None)
+        req.pop("required_families", None)
+    
+>       with pytest.raises(FirewallControllerRequestError):
+E       Failed: DID NOT RAISE <class 'broker.app.firewall_controller_contract.FirewallControllerRequestError'>
+
+broker\tests\test_post_j20_stage_1b15_boundary_persistence_integrity.py:189: Failed
+_________ test_mock_adapter_rejects_mixed_canonical_and_legacy_fields _________
+
+    def test_mock_adapter_rejects_mixed_canonical_and_legacy_fields():
+        c = MockFirewallController()
+        req = _install_req("b15-adapter-mixed", ip_version="ipv4", dest_ip="10.0.0.5")
+    
+>       with pytest.raises(FirewallControllerRequestError):
+E       Failed: DID NOT RAISE <class 'broker.app.firewall_controller_contract.FirewallControllerRequestError'>
+
+broker\tests\test_post_j20_stage_1b15_boundary_persistence_integrity.py:200: Failed
+_______ test_reconciliation_does_not_downgrade_persisted_canonical_body _______
+
+tmp_path = WindowsPath('C:/Users/bhavs/AppData/Local/Temp/pytest-of-bhavs/pytest-25/test_reconciliation_does_not_d0')
+
+    def test_reconciliation_does_not_downgrade_persisted_canonical_body(tmp_path):
+        store = ControllerOwnershipStore(db_path=str(tmp_path / "reconcile-canonical.db"))
+        svc = _svc(store)
+        digest = _installed(store, svc, "b15-reconcile-canonical")
+        before = store.get_canonical_policy_body("b15-reconcile-canonical", 1)
+    
+        res = svc.reconcile_pending_operations(_op_req("b15-reconcile-canonical", digest))
+    
+        after = store.get_canonical_policy_body("b15-reconcile-canonical", 1)
+        assert res["status"] == "ok"
+        assert after == before
+        assert after["schema_version"] == RULE_SCHEMA_VERSION
+>       assert not any(marker in json.dumps(res) for marker in LEGACY_MARKERS)
+E       assert not True
+E        +  where True = any(<generator object test_reconciliation_does_not_downgrade_persisted_canonical_body.<locals>.<genexpr> at 0x00000250D54D2EA0>)
+
+broker\tests\test_post_j20_stage_1b15_boundary_persistence_integrity.py:332: AssertionError
+============================== warnings summary ===============================
+venv\lib\site-packages\pydantic\_internal\_config.py:291
+  E:\Flag-hunt\ctf-platform-be\venv\lib\site-packages\pydantic\_internal\_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED broker/tests/test_post_j20_stage_1b15_boundary_persistence_integrity.py::test_service_rejects_mixed_canonical_rules_with_legacy_flat_fields
+FAILED broker/tests/test_post_j20_stage_1b15_boundary_persistence_integrity.py::test_service_rejects_legacy_compiled_rules_before_persistence
+FAILED broker/tests/test_post_j20_stage_1b15_boundary_persistence_integrity.py::test_mock_adapter_rejects_legacy_compiled_rules_before_state_change
+FAILED broker/tests/test_post_j20_stage_1b15_boundary_persistence_integrity.py::test_mock_adapter_rejects_mixed_canonical_and_legacy_fields
+FAILED broker/tests/test_post_j20_stage_1b15_boundary_persistence_integrity.py::test_reconciliation_does_not_downgrade_persisted_canonical_body
+5 failed, 16 passed, 1 warning in 7.82s

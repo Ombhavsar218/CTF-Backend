@@ -1,0 +1,15 @@
+broker/app/auth.py
+broker/firewall_controller_service/authorization.py
+broker/firewall_controller_service/authorization_strict.py
+broker/firewall_controller_service/controller_service.py
+broker/firewall_controller_service/rule_schema_v1.py
+broker/firewall_controller_service/mock_helper_executor.py
+broker/tests/test_post_j20_stage_1b17_remediation.py
+docs/POST_J20_STAGE_1B_17_REMEDIATION_IMPLEMENTATION.md
+docs/POST_J20_STAGE_1B_17_SECURITY_TEST_EVIDENCE.md
+docs/POST_J20_STAGE_1B_17_RESIDUAL_RISK_ASSESSMENT.md
+docs/POST_J20_STAGE_1B_17_FINAL_VERIFICATION_REPORT.md
+docs/PHASE_2L_2J_1_SECURITY_GATE_REGISTER.md
+docs/evidence/post_j20_stage_1b17/
+post_j20_stage_1b17_run.ps1
+post_j20_stage_1b17_run_cmd.ps1

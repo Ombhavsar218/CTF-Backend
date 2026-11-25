@@ -21,6 +21,8 @@ from django.urls import include, path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # Liveness/readiness/Celery probes. These return no infrastructure details.
+    path('health/', include('ops.urls')),
     path('api/v1/auth/', include('users.urls')),
     # Public challenge + category endpoints: /api/v1/challenges/, /categories/.
     path('api/v1/', include('challenges.urls')),
@@ -41,4 +43,12 @@ urlpatterns = [
     path('api/v1/admin/', include('achievements.admin_urls')),
     # Admin dashboard/analytics aggregates: /api/v1/admin/analytics/.
     path('api/v1/admin/', include('submissions.admin_urls')),
+    # Read-only admin audit trail: /api/v1/admin/audit-logs/.
+    path('api/v1/admin/', include('audit.urls')),
+    # Admin platform settings: /api/v1/admin/settings/.
+    path('api/v1/admin/', include('platform_settings.urls')),
+    # Challenge instances (model/API scaffold only).
+    path('api/v1/', include('instances.urls')),
+    # Authenticated single-use tickets for the WebSocket gateway.
+    path('api/v1/', include('terminal.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -30,7 +30,7 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Challenge)
 class ChallengeAdmin(admin.ModelAdmin):
-    list_display = ('title', 'category', 'difficulty', 'points', 'status', 'solves')
+    list_display = ('title', 'category', 'difficulty', 'points', 'status', 'solves', 'runtime_enabled')
     list_filter = ('status', 'difficulty', 'category', 'featured', 'trial')
     search_fields = ('title', 'author')
     inlines = [ChallengeHintInline, ChallengeAttachmentInline]

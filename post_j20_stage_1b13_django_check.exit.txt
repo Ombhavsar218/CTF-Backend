@@ -1,0 +1,2 @@
+﻿COMMAND: & 'E:\Flag-hunt\ctf-platform-be\venv\Scripts\python.exe' manage.py check
+---EXIT:0---

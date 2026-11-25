@@ -1,0 +1,3 @@
+﻿COMMAND: & 'E:\Flag-hunt\ctf-platform-be\venv\Scripts\pytest.exe' @files -q
+---EXIT:0---
+SECONDS:209.6394571

@@ -1,0 +1,5 @@
+COMMAND=E:\Flag-hunt\ctf-platform-be\venv\Scripts\python.exe -m pytest broker/tests/test_post_j20_stage_1b17_remediation.py -q
+WORKDIR=E:\Flag-hunt\ctf-platform-be
+STARTED=00:00:06.0925064
+DURATION_SECONDS=6.09
+EXIT=1

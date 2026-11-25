@@ -1,0 +1,18 @@
+﻿python.exe : Creating test database for alias 'default'...
+At line:1 char:129
++ ... w(); $out = & 'E:\Flag-hunt\ctf-platform-be\venv\Scripts\python.exe'  ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Creating test d...as 'default'...:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+.................................
+----------------------------------------------------------------------
+Ran 33 tests in 0.037s
+
+OK
+Destroying test database for alias 'default'...
+
+Found 33 test(s).
+System check identified no issues (0 silenced).
+

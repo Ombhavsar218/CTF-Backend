@@ -1,6 +1,8 @@
 from django.urls import path
 
 from .views import (
+    AdminCategoryDetailView,
+    AdminCategoryListCreateView,
     AdminChallengeAttachmentDetailView,
     AdminChallengeAttachmentView,
     AdminChallengeDetailView,
@@ -11,6 +13,16 @@ from .views import (
 app_name = 'challenges_admin'
 
 urlpatterns = [
+    path(
+        'categories/',
+        AdminCategoryListCreateView.as_view(),
+        name='category-list',
+    ),
+    path(
+        'categories/<int:pk>/',
+        AdminCategoryDetailView.as_view(),
+        name='category-detail',
+    ),
     path(
         'challenges/',
         AdminChallengeListCreateView.as_view(),

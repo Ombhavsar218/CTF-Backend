@@ -22,13 +22,15 @@ hint unlocks (see ``leaderboard.py``); they expose only public profile fields.
 
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
-from rest_framework import status
+from rest_framework import generics, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from challenges.models import Category, Challenge, ChallengeHint
+from challenges.mode_content import is_mode_aware, resolve_learning_mode
+from platform_settings.services import get_platform_settings
 
 from .leaderboard import (
     ALL_TIME,
@@ -36,10 +38,12 @@ from .leaderboard import (
     rank_for,
     ranking_queryset,
 )
-from .models import HintUnlock, Submission
+from .models import HintUnlock, Solve, Submission
 from .serializers import (
     FlagSubmissionSerializer,
     LeaderboardEntrySerializer,
+    SolveHistorySerializer,
+    SubmissionHistorySerializer,
     UserStatsSerializer,
 )
 from .services import (
@@ -138,12 +142,26 @@ class HintRevealView(APIView):
     throttle_classes = [HintRevealThrottle]
 
     def post(self, request, pk, hint_pk):
+        if not get_platform_settings().allow_hints:
+            return Response(
+                {'detail': 'Hints are currently disabled.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         # Published-only, and the hint must belong to *this* challenge; an
         # unpublished challenge or a foreign/unknown hint both 404 identically.
         challenge = get_object_or_404(Challenge.objects.published(), pk=pk)
         hint = get_object_or_404(
             ChallengeHint, pk=hint_pk, challenge=challenge
         )
+
+        # Mode-aware challenges reserve progressive paid hints for Student Mode.
+        # Competitors must not receive hint metadata or text via reveal.
+        if is_mode_aware(challenge) and resolve_learning_mode(request.user) != 'student':
+            return Response(
+                {'detail': 'Not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         outcome, unlock, remaining = unlock_hint(request.user, hint)
 
@@ -182,6 +200,52 @@ class HintRevealView(APIView):
 
 
 # ─── Leaderboard ─────────────────────────────────────────────────────────
+
+
+class PersonalHistoryPagination(PageNumberPagination):
+    """Page-number pagination for the caller's own submission/solve history."""
+
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+class PersonalSubmissionHistoryView(generics.ListAPIView):
+    """GET /api/v1/submissions/me/ - the caller's own flag attempts.
+
+    The user is always ``request.user``; there is deliberately no user id in
+    the URL or query string, so a caller cannot read another player's history.
+    """
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = SubmissionHistorySerializer
+    pagination_class = PersonalHistoryPagination
+    http_method_names = ['get', 'head', 'options']
+
+    def get_queryset(self):
+        return (
+            Submission.objects
+            .filter(user=self.request.user)
+            .select_related('challenge', 'challenge__category')
+            .order_by('-created_at', '-id')
+        )
+
+
+class PersonalSolveHistoryView(generics.ListAPIView):
+    """GET /api/v1/solves/me/ - the caller's own successful solves."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = SolveHistorySerializer
+    pagination_class = PersonalHistoryPagination
+    http_method_names = ['get', 'head', 'options']
+
+    def get_queryset(self):
+        return (
+            Solve.objects
+            .filter(user=self.request.user)
+            .select_related('challenge', 'challenge__category')
+            .order_by('-created_at', '-id')
+        )
 
 
 class LeaderboardPagination(PageNumberPagination):
@@ -235,8 +299,12 @@ class LeaderboardView(APIView):
     Ranking is computed entirely server-side from stored solves/hint unlocks.
     """
 
-    permission_classes = [AllowAny]
     http_method_names = ['get', 'head', 'options']
+
+    def get_permissions(self):
+        if get_platform_settings().public_leaderboard:
+            return [AllowAny()]
+        return [IsAuthenticated()]
 
     def get(self, request):
         period = _period_of(request)

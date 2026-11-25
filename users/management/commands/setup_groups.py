@@ -51,6 +51,10 @@ GRANTED = {
         'challenges.add_challenge',
         'challenges.change_challenge',
         'challenges.delete_challenge',
+        'challenges.view_category',
+        'challenges.add_category',
+        'challenges.change_category',
+        'challenges.delete_category',
         'announcements.view_announcement',
         'announcements.add_announcement',
         'announcements.change_announcement',
@@ -60,6 +64,9 @@ GRANTED = {
         'achievements.change_achievement',
         'achievements.delete_achievement',
         'achievements.view_userachievement',
+        'audit.view_auditlog',
+        'platform_settings.view_platformsettings',
+        'platform_settings.change_platformsettings',
     ],
 }
 

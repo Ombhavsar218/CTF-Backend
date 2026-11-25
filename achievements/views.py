@@ -20,11 +20,17 @@ constant number of queries; category/challenge display names are fetched once pe
 response rather than per row.
 """
 
+from django.db import transaction
 from django.db.models import Count, Q
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from audit.services import (
+    AuditAction,
+    changed_fields,
+    log_admin_action,
+)
 from users.permissions import DjangoModelPermissionsWithView
 
 from .criteria import CATEGORY_SOLVES, CHALLENGE_SOLVED
@@ -155,6 +161,18 @@ class AdminAchievementListCreateView(generics.ListCreateAPIView):
         context.update(_label_context(self.get_queryset()))
         return context
 
+    @transaction.atomic
+    def perform_create(self, serializer):
+        achievement = serializer.save()
+        log_admin_action(
+            actor=self.request.user,
+            action=AuditAction.ACHIEVEMENT_CREATE,
+            target_type='achievement',
+            target_id=achievement.pk,
+            target_label=achievement.name,
+            metadata={'fields': changed_fields(serializer.validated_data)},
+        )
+
 
 class AdminAchievementDetailView(generics.RetrieveUpdateDestroyAPIView):
     """GET/PATCH/DELETE /api/v1/admin/achievements/{id}/.
@@ -190,6 +208,33 @@ class AdminAchievementDetailView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.method == 'PATCH':
             return AchievementWriteSerializer
         return AchievementAdminSerializer
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        achievement = serializer.instance
+        fields = changed_fields(serializer.validated_data)
+        serializer.save()
+        log_admin_action(
+            actor=self.request.user,
+            action=AuditAction.ACHIEVEMENT_UPDATE,
+            target_type='achievement',
+            target_id=achievement.pk,
+            target_label=achievement.name,
+            metadata={'fields': fields},
+        )
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        target_id = instance.pk
+        target_label = instance.name
+        instance.delete()
+        log_admin_action(
+            actor=self.request.user,
+            action=AuditAction.ACHIEVEMENT_DELETE,
+            target_type='achievement',
+            target_id=target_id,
+            target_label=target_label,
+        )
 
     def get_serializer_context(self):
         context = super().get_serializer_context()

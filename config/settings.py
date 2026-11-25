@@ -13,6 +13,11 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlparse, urlunparse
+
+from django.core.exceptions import ImproperlyConfigured
+
+from config.deploy import DEV_SECRET_KEY, deployment_errors
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -62,6 +67,22 @@ def _env_int(name, default):
         return default
 
 
+def _env_float(name, default):
+    raw = _env(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
+def _env_level(name, default):
+    """Read a standard logging level, falling back on an invalid value."""
+    raw = (_env(name) or default).upper()
+    return raw if raw in {'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'} else default
+
+
 def _env_list(name, default=()):
     """Parse a comma-separated setting into a list of non-empty items."""
     raw = _env(name)
@@ -83,23 +104,33 @@ def _env_path(name, default):
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-# Falls back to an insecure development key so a missing .env degrades
-# gracefully instead of breaking every management command.
-SECRET_KEY = os.environ.get(
-    'SECRET_KEY',
-    'django-insecure-st#z6#-^0&=7jkkenfk!yja*fwv7=$=$lu3v@$dq%7mf#5$3+%',
-)
+#
+# ``ENVIRONMENT=development`` keeps the historical zero-config behaviour: a
+# missing .env falls back to an insecure development key so runserver and
+# management commands keep working. Any other environment - or any run with
+# DEBUG=False - must provide a real secret. ``config.deploy`` enforces this at
+# the bottom of this module, before Django can accept a request.
+ENVIRONMENT = (_env('ENVIRONMENT') or 'development').strip().lower()
+IS_PRODUCTION = ENVIRONMENT == 'production'
+
+SECRET_KEY = _env('SECRET_KEY')
+if not SECRET_KEY:
+    SECRET_KEY = None if IS_PRODUCTION else DEV_SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = _env_bool('DEBUG', True)
+# Defaulting to False in production means a forgotten DEBUG variable cannot
+# silently expose settings, SQL, or tracebacks.
+DEBUG = _env_bool('DEBUG', not IS_PRODUCTION)
 
-# Leave empty only while DEBUG is True; Django rejects every request otherwise.
+# Required for every non-debug/production run; validated below.
 ALLOWED_HOSTS = _env_list('ALLOWED_HOSTS')
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    # Daphne supplies the ASGI `runserver` command; HTTP routes remain Django's.
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -109,17 +140,30 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    'channels',
     'users.apps.UsersConfig',
     'challenges.apps.ChallengesConfig',
     'submissions.apps.SubmissionsConfig',
     'notifications.apps.NotificationsConfig',
     'announcements.apps.AnnouncementsConfig',
     'achievements.apps.AchievementsConfig',
+    # Persistent administrative audit trail.
+    'audit.apps.AuditConfig',
+    # Small, explicitly approved set of runtime platform settings.
+    'platform_settings.apps.PlatformSettingsConfig',
+    # Background-task plumbing (no models, no migrations).
+    'ops.apps.OpsConfig',
+    # Challenge instance lifecycle (model/API scaffold only; no runtime manager).
+    'instances.apps.InstancesConfig',
+    # Authenticated WebSocket gateway foundation (no terminal execution yet).
+    'terminal.apps.TerminalConfig',
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'config.middleware.ContentSecurityPolicyMiddleware',
+    'config.middleware.RequestIDMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -127,6 +171,61 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# Security headers (production-oriented; safe defaults for local dev)
+SECURE_CONTENT_TYPE_NOSNIFF = _env_bool('SECURE_CONTENT_TYPE_NOSNIFF', True)
+X_FRAME_OPTIONS = _env('X_FRAME_OPTIONS', 'DENY')
+SECURE_REFERRER_POLICY = _env('SECURE_REFERRER_POLICY', 'same-origin')
+
+# HTTPS settings stay off for local development. Production turns them on by
+# default and the deployment validator rejects an explicit insecure override.
+SECURE_SSL_REDIRECT = _env_bool('SECURE_SSL_REDIRECT', IS_PRODUCTION)
+SESSION_COOKIE_SECURE = _env_bool('SESSION_COOKIE_SECURE', IS_PRODUCTION)
+CSRF_COOKIE_SECURE = _env_bool('CSRF_COOKIE_SECURE', IS_PRODUCTION)
+# Start with one hour. Increase it after HTTPS has been verified; preload is
+# deliberately opt-in because it is difficult to undo.
+SECURE_HSTS_SECONDS = _env_int(
+    'SECURE_HSTS_SECONDS', 3600 if IS_PRODUCTION else 0
+)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', False)
+SECURE_HSTS_PRELOAD = _env_bool('SECURE_HSTS_PRELOAD', False)
+
+# The reference production topology puts a TLS-terminating reverse proxy in
+# front of Django. Trust its X-Forwarded-Proto header only when that is true;
+# Django must not be reachable directly from the internet. Set
+# TRUST_PROXY_HEADERS=False only if Django itself terminates TLS.
+TRUST_PROXY_HEADERS = _env_bool('TRUST_PROXY_HEADERS', IS_PRODUCTION)
+if TRUST_PROXY_HEADERS:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+else:
+    SECURE_PROXY_SSL_HEADER = None
+
+# Clear cache-backed throttle counters before each test. See config/test_runner.py.
+TEST_RUNNER = 'config.test_runner.CacheClearingDiscoverRunner'
+
+# Content Security Policy
+#
+# The development policy includes the Vite/API localhost origins. Production
+# defaults to a policy without them; the validator below rejects a production
+# policy that still contains development origins. CSP_REPORT_ONLY stays True
+# until reports have been reviewed - the SPA is served by the reverse proxy and
+# needs its own CSP there, while this header covers Django/DRF responses.
+_DEV_CSP = (
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+    "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+    "font-src 'self' data:; connect-src 'self' http://localhost:5173 "
+    "http://127.0.0.1:5173 http://localhost:8000 http://127.0.0.1:8000 "
+    "ws://localhost:8000 ws://127.0.0.1:8000; "
+    "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+)
+_PROD_CSP = (
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+    "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+    "font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; "
+    "base-uri 'self'; form-action 'self'"
+)
+CSP_REPORT_ONLY = _env_bool('CSP_REPORT_ONLY', True)
+CSP_POLICY = _env('CSP_POLICY', _PROD_CSP if IS_PRODUCTION else _DEV_CSP)
 
 ROOT_URLCONF = 'config.urls'
 
@@ -146,6 +245,9 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
+# Keep the existing WSGI callable for non-ASGI tooling; Daphne/ASGI serves both
+# HTTP and the terminal WebSocket gateway.
+ASGI_APPLICATION = 'config.asgi.application'
 
 
 # Database
@@ -157,15 +259,53 @@ DB_ENGINE = _env('DB_ENGINE', 'django.db.backends.sqlite3')
 
 if DB_ENGINE.endswith('sqlite3'):
     DB_NAME = _env_path('DB_NAME', BASE_DIR / 'db.sqlite3')
-else:
-    DB_NAME = _env('DB_NAME', '')
-
-DATABASES = {
-    'default': {
-        'ENGINE': DB_ENGINE,
-        'NAME': DB_NAME,
+    DATABASES = {
+        'default': {
+            'ENGINE': DB_ENGINE,
+            'NAME': DB_NAME,
+        }
     }
-}
+else:
+    # The project stays on SQLite by default. These fields document (and wire)
+    # the PostgreSQL migration path; selecting that engine also requires the
+    # matching driver installed in the deployment environment.
+    DB_NAME = _env('DB_NAME', '')
+    DATABASES = {
+        'default': {
+            'ENGINE': DB_ENGINE,
+            'NAME': DB_NAME,
+            'USER': _env('DB_USER', ''),
+            'PASSWORD': _env('DB_PASSWORD', ''),
+            'HOST': _env('DB_HOST', ''),
+            'PORT': _env('DB_PORT', ''),
+            'CONN_MAX_AGE': _env_int('DB_CONN_MAX_AGE', 60),
+        }
+    }
+    _db_sslmode = _env('DB_SSLMODE')
+    if _db_sslmode:
+        DATABASES['default']['OPTIONS'] = {'sslmode': _db_sslmode}
+
+
+# Shared cache for throttle counters. Development keeps Django's per-process
+# local-memory cache; production requires CACHE_URL so gunicorn workers share
+# rate-limit state. Cache keys are prefixed to keep a shared Redis tidy.
+CACHE_URL = _env('CACHE_URL')
+if CACHE_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': CACHE_URL,
+            'KEY_PREFIX': 'flaghunt',
+            'TIMEOUT': 300,
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'flaghunt',
+        }
+    }
 
 
 # Password validation
@@ -201,14 +341,146 @@ AUTHENTICATION_BACKENDS = ['users.authentication.UsernameOrEmailBackend']
 # Add more origins here as needed (never use '*' outside local development).
 # Keep this in sync with CSRF_TRUSTED_ORIGINS when the frontend sends cookies.
 
-CORS_ALLOWED_ORIGINS = _env_list('CORS_ALLOWED_ORIGINS', ['http://localhost:5173'])
+# Production defaults to no cross-origin access (a same-origin deployment needs
+# none); list the real SPA origin explicitly when it is served elsewhere.
+CORS_ALLOWED_ORIGINS = _env_list(
+    'CORS_ALLOWED_ORIGINS',
+    [] if IS_PRODUCTION else ['http://localhost:5173'],
+)
 
 # JWT travels in the Authorization header, so credentialed requests are not
 # required. Only enable if you later switch the frontend to cookie auth.
 CORS_ALLOW_CREDENTIALS = _env_bool('CORS_ALLOW_CREDENTIALS', False)
 
+# Let the SPA read the correlation ID from a cross-origin API response.
+CORS_EXPOSE_HEADERS = ['X-Request-ID']
+
 # Required for POST/PATCH/DELETE from the frontend once CSRF protection applies.
 CSRF_TRUSTED_ORIGINS = _env_list('CSRF_TRUSTED_ORIGINS')
+
+# WebSocket Origin allowlist. Browsers send the page Origin (http/https), even
+# for wss:// connections, so these remain http(s) origins. Production must set
+# this explicitly when the SPA is served from a different origin.
+_WS_DEFAULT_ORIGINS = list(dict.fromkeys(
+    list(CORS_ALLOWED_ORIGINS)
+    + ['http://localhost:8000', 'http://127.0.0.1:8000']
+))
+WEBSOCKET_ALLOWED_ORIGINS = _env_list(
+    'FLAGHUNT_WS_ALLOWED_ORIGINS', _WS_DEFAULT_ORIGINS
+)
+
+
+# Logging and request correlation
+# ---------------------------------------------------------------------------
+# Console output stays enabled so `docker compose logs` (worker/Beat) and
+# `runserver` keep working. A rotating file handler is only added when LOG_FILE
+# is configured; this keeps local development from creating log files and lets
+# a production deployment opt into retention.
+LOG_LEVEL = _env_level('LOG_LEVEL', 'INFO')
+DJANGO_LOG_LEVEL = _env_level('DJANGO_LOG_LEVEL', 'INFO')
+REQUEST_LOG_ENABLED = _env_bool('REQUEST_LOG_ENABLED', True)
+
+_log_file = _env('LOG_FILE')
+LOG_FILE = _env_path('LOG_FILE', None) if _log_file else None
+LOG_FILE_MAX_BYTES = max(1024, _env_int('LOG_FILE_MAX_BYTES', 10 * 1024 * 1024))
+LOG_FILE_BACKUP_COUNT = max(0, _env_int('LOG_FILE_BACKUP_COUNT', 5))
+
+
+def _build_logging():
+    formatter = {
+        'format': (
+            '%(asctime)s %(levelname)s %(name)s %(module)s '
+            'process=%(process)d thread=%(threadName)s '
+            'request_id=%(request_id)s %(message)s'
+        ),
+    }
+    filters = {
+        'request_id': {
+            '()': 'config.observability.RequestIDFilter',
+        },
+        'redact': {
+            '()': 'config.observability.RedactingFilter',
+        },
+    }
+    handlers = {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'standard',
+            'filters': ['request_id', 'redact'],
+            'stream': 'ext://sys.stdout',
+        },
+    }
+    handler_names = ['console']
+
+    if LOG_FILE:
+        handlers['file'] = {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'standard',
+            'filters': ['request_id', 'redact'],
+            'filename': str(LOG_FILE),
+            'maxBytes': LOG_FILE_MAX_BYTES,
+            'backupCount': LOG_FILE_BACKUP_COUNT,
+            'encoding': 'utf-8',
+            'delay': True,
+        }
+        handler_names.append('file')
+
+    return {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {'standard': formatter},
+        'filters': filters,
+        'handlers': handlers,
+        'root': {
+            'handlers': handler_names,
+            'level': LOG_LEVEL,
+        },
+        'loggers': {
+            'django': {
+                'handlers': [],
+                'level': DJANGO_LOG_LEVEL,
+                'propagate': True,
+            },
+            'django.request': {
+                'handlers': [],
+                'level': 'ERROR',
+                'propagate': True,
+            },
+            'celery': {
+                'handlers': [],
+                'level': LOG_LEVEL,
+                'propagate': True,
+            },
+            'config.request': {
+                'handlers': [],
+                'level': 'INFO',
+                'propagate': True,
+            },
+            'config.exceptions': {
+                'handlers': [],
+                'level': 'ERROR',
+                'propagate': True,
+            },
+        },
+    }
+
+
+LOGGING = _build_logging()
+
+
+# Runtime manager client
+# ---------------------------------------------------------------------------
+# Production architecture: Django talks to a restricted runtime manager.
+# The manager owns Docker-daemon access; Django must not use direct Docker in
+# production. Direct Docker is allowed only for explicit development/testing
+# when RUNTIME_BACKEND=direct and FLAGHUNT_ALLOW_DIRECT_DOCKER=True.
+MANAGER_BASE_URL = _env('MANAGER_BASE_URL', '')
+MANAGER_TOKEN = _env('MANAGER_TOKEN', '')
+MANAGER_SIGNING_KEY = _env('MANAGER_SIGNING_KEY', '')
+MANAGER_CONNECT_TIMEOUT = _env_float('MANAGER_CONNECT_TIMEOUT', 2.0)
+MANAGER_READ_TIMEOUT = _env_float('MANAGER_READ_TIMEOUT', 5.0)
+RUNTIME_BACKEND = _env('RUNTIME_BACKEND', 'manager').strip().lower() or 'manager'
+ALLOW_DIRECT_DOCKER = _env_bool('FLAGHUNT_ALLOW_DIRECT_DOCKER', False)
 
 
 # Django REST Framework
@@ -219,14 +491,24 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
-    # Per-user rate limits (throttling.FlagSubmitThrottle / HintRevealThrottle).
-    # Uses the default cache; deploy a shared cache (e.g. Redis) so the limits
-    # are enforced consistently across processes.
+    # Keep DRF's useful 4xx bodies, but never expose an internal 5xx detail or
+    # Framework debug traceback to an API caller.
+    'EXCEPTION_HANDLER': 'config.exceptions.safe_exception_handler',
+    # Per-user/IP rate limits. Uses the default cache; deploy a shared cache
+    # (e.g. Redis) so the limits are enforced consistently across processes.
     'DEFAULT_THROTTLE_RATES': {
-        'flag_submit': '5/minute',
-        'hint_reveal': '20/minute',
-        'password_change': '5/minute',
+        'flag_submit': _env('DRF_THROTTLE_FLAG_SUBMIT', '5/minute'),
+        'hint_reveal': _env('DRF_THROTTLE_HINT_REVEAL', '20/minute'),
+        'password_change': _env('DRF_THROTTLE_PASSWORD_CHANGE', '5/minute'),
+        'login': _env('DRF_THROTTLE_LOGIN', '5/minute'),
+        'register': _env('DRF_THROTTLE_REGISTER', '5/hour'),
+        'token_refresh': _env('DRF_THROTTLE_TOKEN_REFRESH', '10/minute'),
+        'terminal_ticket': _env('DRF_THROTTLE_TERMINAL_TICKET', '10/minute'),
     },
+    # 0 means "ignore X-Forwarded-For". Set this only when a trusted proxy
+    # overwrites that header: a client-supplied value must never select the
+    # throttle bucket.
+    'NUM_PROXIES': _env_int('DRF_NUM_PROXIES', 0),
 }
 
 
@@ -246,7 +528,9 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(
         days=_env_int('REFRESH_TOKEN_LIFETIME_DAYS', 1)
     ),
-    'ROTATE_REFRESH_TOKENS': False,
+    'ROTATE_REFRESH_TOKENS': _env_bool('JWT_ROTATE_REFRESH_TOKENS', True),
+    'BLACKLIST_AFTER_ROTATION': _env_bool('JWT_BLACKLIST_AFTER_ROTATION', True),
+    'UPDATE_LAST_LOGIN': _env_bool('JWT_UPDATE_LAST_LOGIN', True),
 }
 
 
@@ -262,6 +546,167 @@ USE_I18N = True
 USE_TZ = True
 
 
+# Celery
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html
+#
+# Only Redis, the Celery worker and Celery Beat run in Docker (see the
+# repository-root docker-compose.yml). Django keeps running on the host, so the
+# default broker address is the localhost-published Redis port. Containers
+# override CELERY_BROKER_URL with the compose service name.
+#
+# No result backend is configured by default: the heartbeat task is log-only,
+# and dropping results avoids an unused Redis keyspace. Set
+# CELERY_RESULT_BACKEND (e.g. redis://127.0.0.1:6379/1) if you want
+# ``manage.py enqueue_heartbeat --wait`` to return a value.
+#
+# Nothing here connects to Redis at import time, so management commands keep
+# working while the broker is down.
+
+CELERY_BROKER_URL = _env('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/0')
+
+
+# Terminal gateway foundation (Stage 1D.2)
+# ---------------------------------------------------------------------------
+# Tickets and session rows live in the ORM so consumption is atomic across
+# workers. The channel layer only carries short-lived revocation messages.
+# Redis is preferred because it is already the broker/cache backend; an
+# explicit URL wins, otherwise a private DB on the existing Redis host is used.
+# In-memory is limited to isolated development/tests with no explicit Redis.
+
+
+def _channel_layer_redis_url():
+    explicit = _env('FLAGHUNT_CHANNEL_LAYER_REDIS_URL')
+    if explicit:
+        return explicit
+    for candidate in (CACHE_URL, CELERY_BROKER_URL):
+        if candidate and candidate.startswith(('redis://', 'rediss://')):
+            parsed = urlparse(candidate)
+            return urlunparse(parsed._replace(path='/2'))
+    return ''
+
+
+CHANNEL_LAYER_REDIS_URL = _channel_layer_redis_url()
+if CHANNEL_LAYER_REDIS_URL:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [CHANNEL_LAYER_REDIS_URL],
+                'prefix': 'flaghunt:ws:',
+            },
+        }
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}
+    }
+
+TERMINAL_ENABLED = _env_bool('FLAGHUNT_TERMINAL_ENABLED', True)
+TERMINAL_SUBPROTOCOL = 'flaghunt-terminal-v1'
+TERMINAL_TICKET_TTL_SECONDS = max(5, _env_int('FLAGHUNT_TERMINAL_TICKET_TTL_SECONDS', 30))
+TERMINAL_MAX_SESSIONS_PER_USER = max(
+    1, _env_int('FLAGHUNT_TERMINAL_MAX_SESSIONS_PER_USER', 1)
+)
+TERMINAL_MAX_SESSIONS_PER_INSTANCE = max(
+    1, _env_int('FLAGHUNT_TERMINAL_MAX_SESSIONS_PER_INSTANCE', 1)
+)
+TERMINAL_MAX_FRAME_BYTES = max(
+    1024, _env_int('FLAGHUNT_TERMINAL_MAX_FRAME_BYTES', 32768)
+)
+# Fixed, backend-controlled startup shell. Browser frames can never change it.
+TERMINAL_SHELL_PATH = _env('FLAGHUNT_TERMINAL_SHELL', '/bin/sh').strip() or '/bin/sh'
+TERMINAL_INPUT_RATE_BYTES_PER_SECOND = max(
+    1024, _env_int('FLAGHUNT_TERMINAL_INPUT_RATE_BYTES_PER_SECOND', 65536)
+)
+TERMINAL_OUTPUT_RATE_BYTES_PER_SECOND = max(
+    1024, _env_int('FLAGHUNT_TERMINAL_OUTPUT_RATE_BYTES_PER_SECOND', 262144)
+)
+TERMINAL_OUTPUT_BUFFER_BYTES = max(
+    4096, _env_int('FLAGHUNT_TERMINAL_OUTPUT_BUFFER_BYTES', 1048576)
+)
+TERMINAL_READ_CHUNK_BYTES = min(
+    8192, max(256, _env_int('FLAGHUNT_TERMINAL_READ_CHUNK_BYTES', 4096))
+)
+TERMINAL_ROWS_MIN = max(1, _env_int('FLAGHUNT_TERMINAL_ROWS_MIN', 24))
+TERMINAL_ROWS_MAX = max(TERMINAL_ROWS_MIN, _env_int('FLAGHUNT_TERMINAL_ROWS_MAX', 200))
+TERMINAL_COLS_MIN = max(1, _env_int('FLAGHUNT_TERMINAL_COLS_MIN', 40))
+TERMINAL_COLS_MAX = max(TERMINAL_COLS_MIN, _env_int('FLAGHUNT_TERMINAL_COLS_MAX', 300))
+TERMINAL_RESIZE_RATE_PER_SECOND = max(
+    1, _env_int('FLAGHUNT_TERMINAL_RESIZE_RATE_PER_SECOND', 4)
+)
+TERMINAL_SESSION_CHECK_INTERVAL_SECONDS = max(
+    1, _env_int('FLAGHUNT_TERMINAL_SESSION_CHECK_INTERVAL_SECONDS', 5)
+)
+TERMINAL_STALE_SESSION_SECONDS = max(
+    30, _env_int('FLAGHUNT_TERMINAL_STALE_SESSION_SECONDS', 300)
+)
+
+CELERY_RESULT_BACKEND = _env('CELERY_RESULT_BACKEND')
+
+# Store results only when a backend is configured. With the default (no
+# backend) nothing is written to Redis, which keeps the keyspace empty.
+CELERY_TASK_IGNORE_RESULT = _env_bool(
+    'CELERY_TASK_IGNORE_RESULT', not bool(CELERY_RESULT_BACKEND)
+)
+
+# JSON only: no pickle between the host and the containers.
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+
+# Keep Django's configured handlers and filters on the worker, including the
+# redaction and request-ID filters. Celery's default hijack would replace them
+# with its own formatter and could bypass secret redaction on task failures.
+CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+
+# Reuse Django's configured zone so a "day" means the same thing to the web
+# process and to a task (streak days are computed in Python, not by the DB).
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# The worker starts even if Redis is still booting; it retries instead of
+# exiting. The compose health dependency normally prevents this anyway.
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+# One harmless recurring task proves Beat is alive. It only logs, so a
+# duplicated delivery cannot duplicate a side effect.
+CELERY_BEAT_SCHEDULE = {
+    'phase14-heartbeat': {
+        'task': 'ops.heartbeat',
+        'schedule': _env_int('CELERY_HEARTBEAT_INTERVAL_SECONDS', 60),
+        'args': ('beat',),
+    },
+    'stage1c-instance-cleanup': {
+        'task': 'instances.cleanup_expired',
+        'schedule': _env_int('CELERY_INSTANCE_CLEANUP_INTERVAL_SECONDS', 60),
+    },
+    'stage1d2-terminal-cleanup': {
+        'task': 'terminal.cleanup_stale',
+        'schedule': _env_int('FLAGHUNT_TERMINAL_CLEANUP_INTERVAL_SECONDS', 60),
+    },
+}
+
+# Health probes. The heartbeat task records idempotent timestamps in Redis so a
+# worker/Beat outage is visible even when the containers still exist. Worker
+# liveness uses a Celery control ping; Beat freshness uses the marker written by
+# the existing scheduled heartbeat (the schedule itself is unchanged).
+CELERY_HEARTBEAT_TRACKING_ENABLED = _env_bool(
+    'CELERY_HEARTBEAT_TRACKING_ENABLED', True
+)
+CELERY_HEARTBEAT_KEY_PREFIX = _env(
+    'CELERY_HEARTBEAT_KEY_PREFIX', 'flaghunt:ops:heartbeat'
+)
+CELERY_HEARTBEAT_TTL_SECONDS = _env_int(
+    'CELERY_HEARTBEAT_TTL_SECONDS',
+    max(180, _env_int('CELERY_HEARTBEAT_INTERVAL_SECONDS', 60) * 3),
+)
+CELERY_BEAT_STALE_AFTER_SECONDS = _env_int(
+    'CELERY_BEAT_STALE_AFTER_SECONDS',
+    max(180, _env_int('CELERY_HEARTBEAT_INTERVAL_SECONDS', 60) * 3),
+)
+CELERY_HEALTH_TIMEOUT_SECONDS = _env_int('CELERY_HEALTH_TIMEOUT_SECONDS', 2)
+
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
@@ -272,9 +717,47 @@ STATIC_ROOT = _env_path('STATIC_ROOT', BASE_DIR / 'staticfiles')
 
 MEDIA_URL = '/media/'
 
-MEDIA_ROOT = BASE_DIR / 'media'
+# Environment-configurable so production can put uploaded files on a dedicated
+# persistent volume. A relative value is anchored to BASE_DIR.
+MEDIA_ROOT = _env_path('MEDIA_ROOT', BASE_DIR / 'media')
+
+# Server-side cap for challenge attachment uploads. The reverse proxy should
+# also enforce a request-body limit; this protects the application when it is
+# reached directly.
+MAX_CHALLENGE_ATTACHMENT_BYTES = max(
+    1024, _env_int('MAX_CHALLENGE_ATTACHMENT_BYTES', 25 * 1024 * 1024)
+)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# Fail fast before Django can serve a request with an unsafe deployment
+# configuration. Development defaults resolve cleanly; production and any
+# DEBUG=False run must be explicit (see config/deploy.py).
+_deployment_errors = deployment_errors(
+    {
+        'environment': ENVIRONMENT,
+        'debug': DEBUG,
+        'secret_key': SECRET_KEY,
+        'allowed_hosts': ALLOWED_HOSTS,
+        'cors_allowed_origins': CORS_ALLOWED_ORIGINS,
+        'csrf_trusted_origins': CSRF_TRUSTED_ORIGINS,
+        'cache_url': CACHE_URL,
+        'celery_broker_url': CELERY_BROKER_URL,
+        'secure_ssl_redirect': SECURE_SSL_REDIRECT,
+        'session_cookie_secure': SESSION_COOKIE_SECURE,
+        'csrf_cookie_secure': CSRF_COOKIE_SECURE,
+        'hsts_seconds': SECURE_HSTS_SECONDS,
+        'csp_policy': CSP_POLICY,
+        'database_engine': DB_ENGINE,
+        'database_name': str(DB_NAME),
+    }
+)
+if _deployment_errors:
+    raise ImproperlyConfigured(
+        'Invalid deployment configuration:\n- '
+        + '\n- '.join(_deployment_errors)
+    )

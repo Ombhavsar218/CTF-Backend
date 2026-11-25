@@ -1,0 +1,9 @@
+﻿MOD  broker\firewall_controller_service\controller_service.py
+MOD  broker\tests\test_post_j20_stage_1b3_durable_crash_recovery.py
+MOD  broker\tests\test_post_j20_stage_1b4_cross_table_concurrency.py
+MOD  docs\PHASE_2L_2J_1_SECURITY_GATE_REGISTER.md
+NEW  broker\tests\test_post_j20_stage_1b14_persistence_reconciliation_residuals.py
+NEW  docs\POST_J20_STAGE_1B_14_FINAL_VERIFICATION_REPORT.md
+NEW  docs\POST_J20_STAGE_1B_14_PERSISTENCE_RECONCILIATION_IMPLEMENTATION.md
+NEW  docs\POST_J20_STAGE_1B_14_RESIDUAL_RISK_ASSESSMENT.md
+NEW  docs\POST_J20_STAGE_1B_14_SECURITY_TEST_EVIDENCE.md

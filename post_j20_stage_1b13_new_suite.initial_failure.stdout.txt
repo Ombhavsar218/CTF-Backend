@@ -1,0 +1,24 @@
+E:\Flag-hunt\ctf-platform-be\venv\lib\site-packages\pytest_asyncio\plugin.py:208: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+...................FF....F..                                             [100%]
+================================== FAILURES ===================================
+____________ test_service_backend_exception_does_not_leak_sentinel ____________
+- AssertionError: sentinel leaked: SENTINEL_BACKEND_1B13_LEAK
+  RuntimeError('SENTINEL_BACKEND_1B13_LEAK') propagated with raw sentinel (backend dispatch exception not bounded at outward boundary).
+
+_______ test_persistence_failure_is_not_reported_as_request_validation ________
+- AssertionError: sentinel leaked: SENTINEL_PERSIST_1B13_LEAK
+  BrokerDBError('SENTINEL_PERSIST_1B13_LEAK') propagated with raw sentinel (persistence failure not bounded at outward boundary).
+
+__________________ test_idempotency_conflict_class_preserved __________________
+- Raised FirewallControllerRequestError: Invalid request instead of FirewallControllerIdempotencyError.
+  Cause (test construction): second request used a compiled_rule_digest that did not match canonical rules, so schema-v1 validation rejected it before idempotency-conflict evaluation. Corrective action: adjust test to use same key with a different valid payload/rules+digest.
+
+============================== warnings summary ===============================
+venv\lib\site-packages\pydantic\_internal\_config.py:291: PydanticDeprecatedSince20 (class-based `config` deprecated)
+=========================== short test summary info ===========================
+FAILED broker/tests/test_post_j20_stage_1b13_canonical_validation_sanitization.py::test_service_backend_exception_does_not_leak_sentinel
+FAILED broker/tests/test_post_j20_stage_1b13_canonical_validation_sanitization.py::test_persistence_failure_is_not_reported_as_request_validation
+FAILED broker/tests/test_post_j20_stage_1b13_canonical_validation_sanitization.py::test_idempotency_conflict_class_preserved
+3 failed, 25 passed, 1 warning in 15.67s

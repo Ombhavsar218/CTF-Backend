@@ -14,9 +14,15 @@ administrative surface reuses the platform's established admin authorization
 introducing a new rule, and derives ``created_by`` from the caller.
 """
 
+from django.db import transaction
 from rest_framework import generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
+from audit.services import (
+    AuditAction,
+    changed_fields,
+    log_admin_action,
+)
 from users.permissions import DjangoModelPermissionsWithView
 
 from .models import Announcement
@@ -56,9 +62,18 @@ class AdminAnnouncementListCreateView(generics.ListCreateAPIView):
             return AnnouncementWriteSerializer
         return AnnouncementAdminSerializer
 
+    @transaction.atomic
     def perform_create(self, serializer):
         # The creator is the authenticated administrator, never the payload.
-        serializer.save(created_by=self.request.user)
+        announcement = serializer.save(created_by=self.request.user)
+        log_admin_action(
+            actor=self.request.user,
+            action=AuditAction.ANNOUNCEMENT_CREATE,
+            target_type='announcement',
+            target_id=announcement.pk,
+            target_label=announcement.title,
+            metadata={'fields': changed_fields(serializer.validated_data)},
+        )
 
 
 class AdminAnnouncementDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -72,3 +87,35 @@ class AdminAnnouncementDetailView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.method == 'PATCH':
             return AnnouncementWriteSerializer
         return AnnouncementAdminSerializer
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        announcement = serializer.instance
+        old_status = announcement.status
+        fields = changed_fields(serializer.validated_data)
+        serializer.save()
+        log_admin_action(
+            actor=self.request.user,
+            action=AuditAction.ANNOUNCEMENT_UPDATE,
+            target_type='announcement',
+            target_id=announcement.pk,
+            target_label=announcement.title,
+            metadata={
+                'fields': fields,
+                'old_status': old_status,
+                'new_status': announcement.status,
+            },
+        )
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        target_id = instance.pk
+        target_label = instance.title
+        instance.delete()
+        log_admin_action(
+            actor=self.request.user,
+            action=AuditAction.ANNOUNCEMENT_DELETE,
+            target_type='announcement',
+            target_id=target_id,
+            target_label=target_label,
+        )

@@ -1,0 +1,832 @@
+........................................................................ [  9%]
+........................................................................ [ 18%]
+........................................................................ [ 27%]
+........................................................................ [ 36%]
+........................................................................ [ 45%]
+........................................................................ [ 54%]
+..................................................................F..... [ 63%]
+........................................................................ [ 72%]
+........................................................................ [ 81%]
+........................................................................ [ 90%]
+........................................................................ [ 99%]
+.                                                                        [100%]
+================================== FAILURES ===================================
+__________________ test_corrupt_lifecycle_record_fail_closed __________________
+
+>   ???
+
+broker\tests\test_firewall_controller_persistence_failure_closure.py:384: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+db_path = 'C:\\Users\\bhavs\\AppData\\Local\\Temp\\tmpvjmp6rlh\\c.db'
+sql = 'UPDATE controller_lifecycle_history SET new_state=?, prev_state=? WHERE ownership_record_id=?'
+params = ('BAD', 'WORSE', 'b90ee442-7b5d-4cdf-bd12-9b90386c93a7')
+
+    def _corrupt(db_path, sql, params=()):
+        conn = sqlite3.connect(db_path)
+>       conn.execute(sql, params)
+E       sqlite3.IntegrityError: append-only record
+
+broker\tests\test_firewall_controller_persistence_failure_closure.py:374: IntegrityError
+============================== warnings summary ===============================
+venv\lib\site-packages\pydantic\_internal\_config.py:291
+  E:\Flag-hunt\ctf-platform-be\venv\lib\site-packages\pydantic\_internal\_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=================================== PASSES ====================================
+=========================== short test summary info ===========================
+PASSED broker/tests/test_broker.py::test_health_requires_auth
+PASSED broker/tests/test_broker.py::test_health_authorized
+PASSED broker/tests/test_broker.py::test_create_rejects_unknown_fields
+PASSED broker/tests/test_broker.py::test_create_rejects_arbitrary_images
+PASSED broker/tests/test_broker.py::test_unauthorized_peer
+PASSED broker/tests/test_broker.py::test_ownership_registry_behavior
+PASSED broker/tests/test_broker.py::test_reject_unowned_containers
+PASSED broker/tests/test_broker.py::test_idempotent_cleanup
+PASSED broker/tests/test_broker.py::test_sanitized_errors
+PASSED broker/tests/test_broker_docker.py::test_broker_dependencies_do_not_create_docker_clients
+PASSED broker/tests/test_broker_docker.py::test_broker_adapter_rejects_injected_docker_client
+PASSED broker/tests/test_broker_docker.py::test_broker_adapter_container_operations_fail_closed_without_client
+PASSED broker/tests/test_broker_docker.py::test_broker_adapter_network_operations_fail_closed_without_client
+PASSED broker/tests/test_broker_docker.py::test_injecting_fake_docker_client_cannot_enable_forbidden_operations
+PASSED broker/tests/test_broker_docker.py::test_broker_routes_cannot_access_docker_operations_create
+PASSED broker/tests/test_broker_docker.py::test_broker_routes_cannot_access_docker_operations_lifecycle
+PASSED broker/tests/test_broker_docker.py::test_dependency_override_cannot_enable_docker_ops_via_client_injection
+PASSED broker/tests/test_broker_docker.py::test_no_fallback_docker_operation_attempted_on_default_path
+PASSED broker/tests/test_broker_docker.py::test_existing_broker_authorization_behavior_remains_intact
+PASSED broker/tests/test_broker_docker.py::test_existing_unrelated_broker_functionality_preserved_policy_rejection
+PASSED broker/tests/test_broker_integration_persistent.py::test_routes_use_persistent_stores_by_default
+PASSED broker/tests/test_broker_integration_persistent.py::test_in_memory_stores_used_only_when_explicitly_injected_and_docker_unavailable
+PASSED broker/tests/test_broker_integration_persistent.py::test_db_write_failure_path_not_reached_without_docker_creation
+PASSED broker/tests/test_broker_integration_persistent.py::test_no_docker_compensating_removal_when_adapter_unavailable
+PASSED broker/tests/test_broker_integration_persistent.py::test_restart_preserves_ownership_persistent
+PASSED broker/tests/test_broker_integration_persistent.py::test_no_silent_fallback
+PASSED broker/tests/test_broker_integration_persistent.py::test_adapter_unavailable_fails_closed_even_with_failing_audit
+PASSED broker/tests/test_broker_network_lifecycle.py::test_network_operations_fail_closed_no_client
+PASSED broker/tests/test_broker_network_lifecycle.py::test_injected_docker_client_cannot_enable_network_operations
+PASSED broker/tests/test_broker_network_lifecycle.py::test_network_ownership_persistent_restart_unrelated_behavior_preserved
+PASSED broker/tests/test_broker_network_lifecycle.py::test_network_orphan_persistence_and_reconcile_unrelated_behavior_preserved
+PASSED broker/tests/test_broker_network_lifecycle.py::test_network_orphan_duplicate_prevented_unrelated_behavior_preserved
+PASSED broker/tests/test_broker_network_lifecycle_audit.py::test_network_adapter_fail_closed_for_all_operations
+PASSED broker/tests/test_broker_network_lifecycle_audit.py::test_docker_client_injection_cannot_activate_network_operations
+PASSED broker/tests/test_broker_network_lifecycle_audit.py::test_network_ownership_persistence_unrelated_behavior_preserved
+PASSED broker/tests/test_broker_network_lifecycle_audit.py::test_network_concurrent_creation_idempotent_unrelated_behavior_preserved
+PASSED broker/tests/test_broker_persistence.py::test_successful_creation_records_ownership
+PASSED broker/tests/test_broker_persistence.py::test_failed_creation_does_not_record_ownership
+PASSED broker/tests/test_broker_persistence.py::test_ownership_mismatch_blocks
+PASSED broker/tests/test_broker_persistence.py::test_unknown_containers_cannot_be_operated_on
+PASSED broker/tests/test_broker_persistence.py::test_labels_alone_do_not_establish_ownership
+PASSED broker/tests/test_broker_persistence.py::test_restart_preserves_ownership
+PASSED broker/tests/test_broker_persistence.py::test_repeated_stop_remove_safe
+PASSED broker/tests/test_broker_persistence.py::test_concurrent_operations_cannot_create_conflicting
+PASSED broker/tests/test_broker_persistence.py::test_corrupt_unavailable_database
+PASSED broker/tests/test_broker_persistence.py::test_rollback_on_persistence_failure_simulated
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_orphan_record_survives_restart
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_orphan_duplicate_prevented
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_pending_lists_unresolved_only
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_reconcile_confirms_only_after_success
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_reconcile_rejects_untrusted_external_id
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_orphan_record_never_silently_discarded
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_orphan_registry_fails_closed_without_persistence
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_orphan_persistence_write_failure_is_surfaced
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_db_directory_and_file_permissions
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_sidecar_files_are_hardened_when_present
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_db_initialization_failure_fails_closed
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_locked_database_fails_closed
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_corrupt_database_fails_closed
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_audit_storage_unavailable_fails_closed_on_init
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_audit_write_failure_does_not_crash_caller
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_audit_redacts_secrets
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_ownership_write_failure_raises
+PASSED broker/tests/test_broker_recovery_and_audit.py::test_restart_after_incomplete_recovery_preserves_state
+PASSED broker/tests/test_broker_uds.py::test_authorized_uid_gid
+PASSED broker/tests/test_broker_uds.py::test_unauthorized_uid_gid
+PASSED broker/tests/test_broker_uds.py::test_missing_peer_credentials
+PASSED broker/tests/test_broker_uds.py::test_no_trust_in_caller_supplied_identity_headers
+PASSED broker/tests/test_broker_uds.py::test_socket_permission_failures
+PASSED broker/tests/test_broker_uds.py::test_startup_failure_when_socket_setup_fails
+PASSED broker/tests/test_broker_uds.py::test_no_tcp_listener
+PASSED broker/tests/test_broker_uds.py::test_request_id_and_idempotency_preserved
+PASSED broker/tests/test_broker_uds.py::test_invalid_socket_path
+PASSED broker/tests/test_firewall_controller_active_enforcement.py::test_install_creates_ownership
+PASSED broker/tests/test_firewall_controller_active_enforcement.py::test_revoke_requires_ownership
+PASSED broker/tests/test_firewall_controller_active_enforcement.py::test_verify_requires_ownership
+PASSED broker/tests/test_firewall_controller_active_enforcement.py::test_idempotency_conflict_active
+PASSED broker/tests/test_firewall_controller_active_integration.py::test_active_strict_auth_missing_identity
+PASSED broker/tests/test_firewall_controller_active_integration.py::test_active_strict_auth_empty_allowlists_fail_closed
+PASSED broker/tests/test_firewall_controller_active_integration.py::test_active_strict_auth_caller_header_rejected
+PASSED broker/tests/test_firewall_controller_active_integration.py::test_active_strict_auth_unauthorized_never_reaches_backend
+PASSED broker/tests/test_firewall_controller_canonical_lifecycle_integration_2j7.py::test_inspect_fails_closed_on_corrupt_canonical_body_json
+PASSED broker/tests/test_firewall_controller_canonical_lifecycle_integration_2j7.py::test_inspect_fails_closed_on_tampered_canonical_body_digest
+PASSED broker/tests/test_firewall_controller_canonical_lifecycle_integration_2j7.py::test_verify_fails_closed_on_corrupt_canonical_body_and_does_not_activate
+PASSED broker/tests/test_firewall_controller_canonical_lifecycle_integration_2j7.py::test_reconcile_marks_uncertain_on_invalid_canonical_body_and_no_false_active
+PASSED broker/tests/test_firewall_controller_canonical_lifecycle_integration_2j7.py::test_inspect_rejects_wrong_owner_context_via_authorization_ownership_binding
+PASSED broker/tests/test_firewall_controller_canonical_lifecycle_integration_2j7.py::test_legacy_install_without_canonical_body_still_inspectable_and_reconcilable
+PASSED broker/tests/test_firewall_controller_canonical_policy_persistence_2j6.py::test_install_persists_canonical_policy_body_and_trusted_readback_succeeds
+PASSED broker/tests/test_firewall_controller_canonical_policy_persistence_2j6.py::test_store_rejects_canonical_body_digest_mismatch_on_write
+PASSED broker/tests/test_firewall_controller_canonical_policy_persistence_2j6.py::test_trusted_readback_fails_closed_on_corrupt_json_and_digest_mismatch
+PASSED broker/tests/test_firewall_controller_canonical_policy_persistence_2j6.py::test_trusted_readback_fails_closed_on_owner_version_binding_mismatch
+PASSED broker/tests/test_firewall_controller_canonical_policy_persistence_2j6.py::test_trusted_readback_rejects_unsupported_schema_version
+PASSED broker/tests/test_firewall_controller_canonical_policy_persistence_2j6.py::test_legacy_install_without_rules_does_not_require_canonical_body
+PASSED broker/tests/test_firewall_controller_concurrency_integrity.py::test_lifecycle_version_increments
+PASSED broker/tests/test_firewall_controller_concurrency_integrity.py::test_idempotency_conflict_different_request
+PASSED broker/tests/test_firewall_controller_concurrency_integrity.py::test_same_key_completed_replay
+PASSED broker/tests/test_firewall_controller_contract.py::test_contract_health_check
+PASSED broker/tests/test_firewall_controller_contract.py::test_contract_install_idempotent
+PASSED broker/tests/test_firewall_controller_contract.py::test_contract_idempotency_conflict
+PASSED broker/tests/test_firewall_controller_contract.py::test_contract_partial_install_ipv6_fail
+PASSED broker/tests/test_firewall_controller_contract.py::test_contract_ownership_mismatch
+PASSED broker/tests/test_firewall_controller_contract.py::test_contract_verify_requires_evidence_structure
+PASSED broker/tests/test_firewall_controller_contract.py::test_contract_revoke_idempotent
+PASSED broker/tests/test_firewall_controller_contract.py::test_contract_idempotent_identical
+PASSED broker/tests/test_firewall_controller_contract.py::test_contract_concurrent_duplicate_inprocess
+PASSED broker/tests/test_firewall_controller_contract.py::test_contract_reconcile
+PASSED broker/tests/test_firewall_controller_crash_boundary_instrumentation.py::test_boundary_A_state_sim_fresh_process_recovery
+PASSED broker/tests/test_firewall_controller_crash_boundary_instrumentation.py::test_boundary_B_state_sim_fresh_process_recovery
+PASSED broker/tests/test_firewall_controller_crash_boundary_instrumentation.py::test_boundary_C_state_sim_fresh_process_recovery
+PASSED broker/tests/test_firewall_controller_crash_boundary_instrumentation.py::test_cross_process_lifecycle_cas_collision
+PASSED broker/tests/test_firewall_controller_crash_boundary_instrumentation.py::test_interrupted_reconciliation_then_fresh_recovery
+PASSED broker/tests/test_firewall_controller_crash_boundary_instrumentation.py::test_repeated_interrupted_reconciliation
+PASSED broker/tests/test_firewall_controller_crash_boundary_instrumentation.py::test_db_unavailable_during_reconcile_fails_closed
+PASSED broker/tests/test_firewall_controller_crash_boundary_instrumentation.py::test_corrupt_ownership_record_handling
+PASSED broker/tests/test_firewall_controller_crash_boundary_instrumentation.py::test_missing_evidence_record_fail_closed
+PASSED broker/tests/test_firewall_controller_crash_boundary_instrumentation.py::test_backend_inconsistent_with_persisted_ownership
+PASSED broker/tests/test_firewall_controller_cross_process_concurrency.py::test_cross_process_identical
+PASSED broker/tests/test_firewall_controller_cross_process_concurrency.py::test_cross_process_conflicting
+PASSED broker/tests/test_firewall_controller_cross_process_concurrency.py::test_cross_process_crash_recovery
+PASSED broker/tests/test_firewall_controller_cross_process_crash_recovery.py::test_xproc_crash_after_intent_before_backend_side_effects
+PASSED broker/tests/test_firewall_controller_cross_process_crash_recovery.py::test_xproc_crash_during_backend_execution
+PASSED broker/tests/test_firewall_controller_cross_process_crash_recovery.py::test_xproc_fresh_process_recovery_preserves_persistence
+PASSED broker/tests/test_firewall_controller_cross_process_crash_recovery.py::test_xproc_conflicting_idempotency_same_key
+PASSED broker/tests/test_firewall_controller_cross_process_crash_recovery.py::test_xproc_concurrent_reconciliation
+PASSED broker/tests/test_firewall_controller_cross_process_crash_recovery.py::test_xproc_backend_readback_unavailable_fresh_process
+PASSED broker/tests/test_firewall_controller_cross_process_crash_recovery.py::test_xproc_no_adoption_of_unknown_backend_objects
+PASSED broker/tests/test_firewall_controller_deterministic_concurrency.py::test_concurrent_identical_install
+PASSED broker/tests/test_firewall_controller_deterministic_concurrency.py::test_concurrent_conflicting_idempotency
+PASSED broker/tests/test_firewall_controller_deterministic_concurrency.py::test_lifecycle_cas_race_install_revoke
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_valid_enum_operations[health_check-HEALTH_CHECK]
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_valid_enum_operations[install_policy-INSTALL_POLICY]
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_valid_enum_operations[inspect_policy-INSPECT_POLICY]
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_valid_enum_operations[verify_policy-VERIFY_POLICY]
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_valid_enum_operations[revoke_policy-REVOKE_POLICY]
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_valid_enum_operations[remove_stale_policy-REMOVE_OWNED_POLICY]
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_valid_enum_operations[reconcile_pending_operations-RECONCILE_OWNED_POLICY]
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_unknown_operation_rejection
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_unknown_schema_fields_rejected
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_invalid_request_types
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_missing_peer_identity_fails_closed
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_unauthorized_mock_identity
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_empty_authorization_allowlist_fails_closed
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_caller_supplied_identity_rejected
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_invalid_policy_and_address_values
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_request_size_limit
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_timeout_behavior
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_idempotent_replay
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_conflicting_idempotency_keys
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_partial_execution_failure
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_audit_record_creation_sanitized
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_uncertain_outcome_does_not_promote_active
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_evidence_gated_active_promotion
+PASSED broker/tests/test_firewall_controller_helper_contract.py::test_mock_executor_no_shell_host_state
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_backend_without_identity_provider_fails_closed
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_backend_without_auth_fails_closed
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_executor_constructor_has_no_implicit_identity_or_allowlists
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_identity_provider_unavailable_fails_closed
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_missing_identity_at_executor_fails_closed
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_unlisted_uid_or_gid_denied[1000-2000]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_unlisted_uid_or_gid_denied[2000-1000]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_unlisted_uid_or_gid_denied[9999-9999]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_unlisted_uid_or_gid_denied[0-0]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_empty_allowlists_denied_even_with_valid_identity
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_request_json_identity_claims_do_not_grant_authorization
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_request_json_identity_claims_are_stripped_and_provider_identity_wins
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_direct_contract_rejects_identity_claim_fields
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_identity_changes_between_requests_are_independently_authorized
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_identity_provider_consulted_once_per_request
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_unauthorized_operation_rejected_before_backend_execution
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_execute_method_uses_same_authorization_path
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_schema_version_exact_match_accepted
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_schema_version_invalid_or_unsupported_rejected[None-INVALID_REQUEST]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_schema_version_invalid_or_unsupported_rejected[-INVALID_REQUEST]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_schema_version_invalid_or_unsupported_rejected[123-INVALID_REQUEST]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_schema_version_invalid_or_unsupported_rejected[1-UNSUPPORTED_SCHEMA_VERSION]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_schema_version_invalid_or_unsupported_rejected[2L.2G.2-UNSUPPORTED_SCHEMA_VERSION]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_schema_version_invalid_or_unsupported_rejected[2l.2g.3-UNSUPPORTED_SCHEMA_VERSION]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_missing_schema_version_rejected
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_schema_version_alias_field_rejected
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_invalid_digest_rejected[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_invalid_digest_rejected[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_invalid_digest_rejected[short]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_invalid_digest_rejected[zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_invalid_digest_rejected[gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_invalid_digest_rejected[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!0]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_invalid_digest_rejected[]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_valid_sha256_hex_digest_accepted
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_compiled_policy_allowed_data_shape_accepted
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_compiled_policy_unexpected_nested_field_rejected
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_compiled_policy_executable_or_expression_content_rejected[tcp; rm -rf /]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_compiled_policy_executable_or_expression_content_rejected[$(reboot)]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_compiled_policy_executable_or_expression_content_rejected[`id`]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_compiled_policy_executable_or_expression_content_rejected[nft add rule inet filter input accept]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_compiled_policy_executable_or_expression_content_rejected[iptables -F]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_compiled_policy_executable_or_expression_content_rejected[/bin/sh -c id]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_compiled_policy_executable_or_expression_content_rejected[a && b]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_compiled_policy_executable_or_expression_content_rejected[a || b]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_compiled_policy_executable_or_expression_content_rejected[a\nb]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_compiled_policy_depth_limit
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_ownership_reference_required_even_with_instance_and_policy_ids
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_invalid_ownership_reference_rejected[None]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_invalid_ownership_reference_rejected[]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_invalid_ownership_reference_rejected[   ]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_invalid_ownership_reference_rejected[123]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_invalid_ownership_reference_rejected[bad id!]
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_ownership_record_id_is_accepted_as_explicit_reference
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_timeout_bound_validated
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_timeout_enforcement_is_declared_future_layer
+PASSED broker/tests/test_firewall_controller_helper_identity_propagation.py::test_controller_injects_persisted_ownership_reference_not_caller_value
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_policy_id_before_any_access['p1\\n']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_policy_id_before_any_access['p1\\r']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_policy_id_before_any_access[' p1']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_policy_id_before_any_access['p1 ']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_policy_id_before_any_access['p1\\t']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_policy_id_before_any_access['p1\\x00']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_policy_id_before_any_access[['p1']]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_policy_id_before_any_access[{'policy_id': 'p1'}]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_policy_id_before_any_access[123]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_policy_id_before_any_access[True]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_policy_id_before_any_access[b'p1']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_policy_id_before_any_access['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_instance_id_before_any_access['']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_instance_id_before_any_access['i1\\n']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_instance_id_before_any_access['i1\\r']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_instance_id_before_any_access[' i1']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_instance_id_before_any_access['i1 ']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_instance_id_before_any_access['i1\\t']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_instance_id_before_any_access['i1\\x00']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_instance_id_before_any_access[['i1']]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_instance_id_before_any_access[{'id': 'i1'}]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_instance_id_before_any_access[123]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_instance_id_before_any_access[True]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_instance_id_before_any_access[b'i1']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_instance_id_before_any_access['iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_network_id_before_any_access['']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_network_id_before_any_access['i1\\n']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_network_id_before_any_access['i1\\r']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_network_id_before_any_access[' i1']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_network_id_before_any_access['i1 ']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_network_id_before_any_access['i1\\t']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_network_id_before_any_access['i1\\x00']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_network_id_before_any_access[['i1']]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_network_id_before_any_access[{'id': 'i1'}]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_network_id_before_any_access[123]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_network_id_before_any_access[True]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_network_id_before_any_access[b'i1']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_rejects_invalid_network_id_before_any_access['iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_preserves_omitted_and_none_optional_semantics[inst0-net0]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_preserves_omitted_and_none_optional_semantics[None-None]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_valid_request_replays_idempotently
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_health_check_invalid_list_does_not_leak_broker_db_error
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_policy_id_before_store_access['p1\\n']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_policy_id_before_store_access['p1\\r']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_policy_id_before_store_access[' p1']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_policy_id_before_store_access['p1 ']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_policy_id_before_store_access['p1\\t']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_policy_id_before_store_access['p1\\x00']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_policy_id_before_store_access[['p1']]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_policy_id_before_store_access[{'policy_id': 'p1'}]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_policy_id_before_store_access[123]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_policy_id_before_store_access[True]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_policy_id_before_store_access[b'p1']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_policy_id_before_store_access['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_instance_id_before_store_access['']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_instance_id_before_store_access['i1\\n']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_instance_id_before_store_access['i1\\r']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_instance_id_before_store_access[' i1']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_instance_id_before_store_access['i1 ']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_instance_id_before_store_access['i1\\t']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_instance_id_before_store_access['i1\\x00']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_instance_id_before_store_access[['i1']]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_instance_id_before_store_access[{'id': 'i1'}]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_instance_id_before_store_access[123]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_instance_id_before_store_access[True]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_instance_id_before_store_access[b'i1']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_instance_id_before_store_access['iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_network_id_before_store_access['']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_network_id_before_store_access['i1\\n']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_network_id_before_store_access['i1\\r']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_network_id_before_store_access[' i1']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_network_id_before_store_access['i1 ']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_network_id_before_store_access['i1\\t']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_network_id_before_store_access['i1\\x00']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_network_id_before_store_access[['i1']]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_network_id_before_store_access[{'id': 'i1'}]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_network_id_before_store_access[123]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_network_id_before_store_access[True]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_network_id_before_store_access[b'i1']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_rejects_invalid_network_id_before_store_access['iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii']
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_invalid_input_does_not_mutate_seeded_lifecycle_or_evidence
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_invalid_list_does_not_leak_broker_db_error
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_valid_policy_specific_request_remains_functional
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_preserves_omitted_and_none_optional_semantics[inst0-net0]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_preserves_omitted_and_none_optional_semantics[None-None]
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_full_scan_without_policy_id_remains_supported
+PASSED broker/tests/test_firewall_controller_identifier_validation_entrypoints.py::test_reconcile_full_scan_rejects_supplied_invalid_optional_identifier
+PASSED broker/tests/test_firewall_controller_j10_reconciliation_hardening.py::test_reconcile_unknown_ownership_not_adopted_fail_closed
+PASSED broker/tests/test_firewall_controller_j10_reconciliation_hardening.py::test_reconcile_per_policy_accounts_for_target_record_only_in_result
+PASSED broker/tests/test_firewall_controller_j10_reconciliation_hardening.py::test_verified_state_without_valid_evidence_fails_closed
+PASSED broker/tests/test_firewall_controller_j10_reconciliation_hardening.py::test_revoked_state_without_evidence_fails_closed
+PASSED broker/tests/test_firewall_controller_j10_reconciliation_hardening.py::test_store_cas_rejects_stale_version_update
+PASSED broker/tests/test_firewall_controller_j10_reconciliation_hardening.py::test_concurrent_reconcile_same_policy_no_corruption_or_duplicate_promotion
+PASSED broker/tests/test_firewall_controller_j10_reconciliation_hardening.py::test_restart_reopen_preserves_state_and_reconcile_remains_safe
+PASSED broker/tests/test_firewall_controller_j10_reconciliation_hardening.py::test_uncertain_backend_install_not_promoted_after_reopen
+PASSED broker/tests/test_firewall_controller_j10_reconciliation_hardening.py::test_reconcile_rejects_canonical_body_owner_mismatch_via_trusted_readback
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_reconcile_handles_known_states_without_silent_skip[REQUESTED]
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_reconcile_handles_known_states_without_silent_skip[VALIDATING]
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_reconcile_handles_known_states_without_silent_skip[INSTALLING]
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_reconcile_handles_known_states_without_silent_skip[VERIFYING]
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_reconcile_handles_known_states_without_silent_skip[VERIFIED]
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_reconcile_handles_known_states_without_silent_skip[ACTIVE]
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_reconcile_handles_known_states_without_silent_skip[REVOKING]
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_reconcile_handles_known_states_without_silent_skip[REVOKED]
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_reconcile_handles_known_states_without_silent_skip[FAILED]
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_reconcile_handles_known_states_without_silent_skip[CLEANUP_PENDING]
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_reconcile_handles_known_states_without_silent_skip[ORPHANED]
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_unknown_persisted_state_fails_closed
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_verified_missing_evidence_no_promotion
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_verified_wrong_policy_version_evidence_no_promotion
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_verified_wrong_ownership_binding_evidence_no_promotion
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_verified_wrong_digest_evidence_no_promotion
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_revoked_missing_evidence_uncertain
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_active_backend_missing_becomes_uncertain
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_cas_stale_lifecycle_state_rejected_on_store_update
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_concurrent_reconcile_and_revoke_no_false_success
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_concurrent_reconcile_and_verify_no_corruption
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_stale_reconcile_cannot_overwrite_revoked_state
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_reopen_after_install_preserves_non_active_and_reconcile_safe
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_repeated_recovery_idempotent_no_duplicate_evidence
+PASSED broker/tests/test_firewall_controller_j11_adversarial_lifecycle.py::test_idempotency_retry_deadline_bounded_elapsed_time
+PASSED broker/tests/test_firewall_controller_j12_fault_injection_and_races.py::test_failure_during_update_ownership_state_rolls_back_no_partial_commit
+PASSED broker/tests/test_firewall_controller_j12_fault_injection_and_races.py::test_failure_during_evidence_store_does_not_promote_to_active
+PASSED broker/tests/test_firewall_controller_j12_fault_injection_and_races.py::test_failure_during_idempotency_create_propagates_no_false_success
+PASSED broker/tests/test_firewall_controller_j12_fault_injection_and_races.py::test_db_reopen_after_interruption_reconcile_remains_fail_closed
+PASSED broker/tests/test_firewall_controller_j12_fault_injection_and_races.py::test_commit_failure_via_connection_wrapper_prevents_partial_committed_state
+PASSED broker/tests/test_firewall_controller_j12_fault_injection_and_races.py::test_install_vs_reconcile_deterministic_no_false_active
+PASSED broker/tests/test_firewall_controller_j12_fault_injection_and_races.py::test_two_simultaneous_reconcile_requests_consistent
+PASSED broker/tests/test_firewall_controller_j12_fault_injection_and_races.py::test_policy_version_advance_during_reconcile_snapshot_no_stale_overwrite
+PASSED broker/tests/test_firewall_controller_j12_fault_injection_and_races.py::test_unique_ownership_policy_version_enforced
+PASSED broker/tests/test_firewall_controller_j12_fault_injection_and_races.py::test_idempotency_duplicate_create_conflict_handled
+PASSED broker/tests/test_firewall_controller_j12_fault_injection_and_races.py::test_corrupt_persisted_canonical_json_fails_closed_on_readback
+PASSED broker/tests/test_firewall_controller_j12_fault_injection_and_races.py::test_reopen_after_interruption_preserves_constraints_and_reads
+PASSED broker/tests/test_firewall_controller_j12_fault_injection_and_races.py::test_persistent_idempotency_read_failure_bounded_and_no_false_success
+PASSED broker/tests/test_firewall_controller_j12_fault_injection_and_races.py::test_persistent_idempotency_create_failure_no_false_success
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_tx_commit_failure_on_create_ownership_rolls_back_no_partial_state
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_tx_commit_failure_on_store_evidence_rolls_back_no_evidence
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_tx_commit_failure_on_idempotency_complete_no_false_completed
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_failure_after_commit_but_before_caller_response_recovery_recognizes_committed_install
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_reopen_and_reconcile_after_commit_preserves_state_no_false_active
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_verify_vs_reconcile_barrier_no_stale_overwrite
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_revoke_vs_reconcile_barrier_no_reactivation
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_two_simultaneous_lifecycle_transitions_verify_races_safe
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_stale_reconcile_after_revoke_cannot_reactivate
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_policy_version_advanced_snapshot_no_cross_version_overwrite
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_ownership_binding_changed_during_snapshot_reconcile_fails_closed
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_concurrent_initial_creation_same_key_no_dual_success
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_same_key_identical_replay_after_commit_is_deterministic
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_same_key_conflicting_replay_rejected
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_persistent_create_failure_bounded_and_no_false_success_j13
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_persistent_read_failure_bounded_j13
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_retry_after_committed_same_idempotent_operation_replays_no_duplicate
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_canonical_body_ownership_version_binding_enforced
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_state_version_cas_rejection_no_stale_write
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_reopen_recovery_integrity_after_verified_active
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_corrupt_canonical_json_fails_closed_j13
+PASSED broker/tests/test_firewall_controller_j13_transaction_boundary_and_recovery.py::test_evidence_history_duplication_not_observed_on_repeated_recovery
+PASSED broker/tests/test_firewall_controller_j15_canonical_authority.py::test_contract_rejects_noncanonical_compiled_rule_digest
+PASSED broker/tests/test_firewall_controller_j15_canonical_authority.py::test_service_rejects_malformed_request_operation_idempotency_ids
+PASSED broker/tests/test_firewall_controller_j15_canonical_authority.py::test_service_rejects_malformed_policy_identifier
+PASSED broker/tests/test_firewall_controller_j15_canonical_authority.py::test_helper_envelope_requires_exact_helper_schema_version
+PASSED broker/tests/test_firewall_controller_j15_canonical_authority.py::test_rule_and_helper_schema_versions_are_distinct_layers
+PASSED broker/tests/test_firewall_controller_j15_canonical_authority.py::test_corrupt_canonical_body_cannot_produce_successful_inspect
+PASSED broker/tests/test_firewall_controller_j15_canonical_authority.py::test_mismatched_policy_version_fails_closed
+PASSED broker/tests/test_firewall_controller_j15_canonical_authority.py::test_mismatched_ownership_binding_fails_closed
+PASSED broker/tests/test_firewall_controller_j15_canonical_authority.py::test_digest_mismatch_rejected_on_install
+PASSED broker/tests/test_firewall_controller_j15_canonical_authority.py::test_legacy_no_rules_compatibility_preserved
+PASSED broker/tests/test_firewall_controller_j15_canonical_authority.py::test_canonical_inspect_response_derived_from_trusted_body_when_present
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_implicit_nonstrict_construction_rejected_fail_closed
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_explicit_test_only_mock_auth_requires_explicit_injection
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_missing_peer_identity_rejected_before_sensitive_side_effects[install_policy]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_missing_peer_identity_rejected_before_sensitive_side_effects[inspect_policy]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_missing_peer_identity_rejected_before_sensitive_side_effects[verify_policy]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_missing_peer_identity_rejected_before_sensitive_side_effects[revoke_policy]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_missing_peer_identity_rejected_before_sensitive_side_effects[remove_stale_policy]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_missing_peer_identity_rejected_before_sensitive_side_effects[reconcile_pending_operations]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_malformed_peer_identity_rejected[abc-1000]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_malformed_peer_identity_rejected[1000-abc]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_malformed_peer_identity_rejected[None-1000]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_malformed_peer_identity_rejected[1000-None]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_malformed_peer_identity_rejected[-1000]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_caller_supplied_trusted_identity_flags_rejected[caller_trusted]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_caller_supplied_trusted_identity_flags_rejected[verified]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_caller_supplied_trusted_identity_flags_rejected[trusted]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_caller_supplied_trusted_identity_flags_rejected[auth_identity]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_caller_supplied_trusted_identity_flags_rejected[x_identity]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_caller_supplied_trusted_identity_flags_rejected[source_identity]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_unauthorized_uid_rejected[install_policy]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_unauthorized_uid_rejected[inspect_policy]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_unauthorized_uid_rejected[verify_policy]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_unauthorized_uid_rejected[revoke_policy]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_unauthorized_uid_rejected[remove_stale_policy]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_unauthorized_uid_rejected[reconcile_pending_operations]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_unauthorized_gid_rejected[install_policy]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_unauthorized_gid_rejected[inspect_policy]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_unauthorized_gid_rejected[verify_policy]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_unauthorized_gid_rejected[revoke_policy]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_unauthorized_gid_rejected[remove_stale_policy]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_unauthorized_gid_rejected[reconcile_pending_operations]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_wrong_owner_binding_cannot_access_or_mutate_state
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_same_idempotency_key_different_payload_rejected_fail_closed
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_direct_service_call_without_peer_identity_fails_closed
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_missing_required_field_rejected_no_side_effect
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_invalid_identifier_values_rejected_fail_closed[request_id-bad id]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_invalid_identifier_values_rejected_fail_closed[operation_id-../bad]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_invalid_identifier_values_rejected_fail_closed[idempotency_key-bad\nkey]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_invalid_identifier_values_rejected_fail_closed[policy_id-bad/id]
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_invalid_digest_rejected_fail_closed
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_validation_failure_does_not_claim_success_or_create_state
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_unauthorized_inspect_has_no_state_mutation
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_authorized_workflow_install_verify_inspect_revoke
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_mock_transport_injects_peer_identity_not_caller_payload
+PASSED broker/tests/test_firewall_controller_j16_authorization_identity.py::test_mock_transport_missing_peer_fails_closed
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_fresh_db_init_and_reopen_preserve_schema_and_integrity
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_existing_schema_reopen_applies_append_only_triggers_without_data_rewrite
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_policy_body_foreign_key_enforced_on_store_connections
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_lifecycle_history_append_only_blocks_update_and_delete
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_evidence_append_only_blocks_update_and_delete_and_preserves_records
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_audit_append_only_blocks_update_and_delete
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_duplicate_or_conflicting_evidence_does_not_promote_false_verified_or_active
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_install_multi_table_partial_progress_remains_recoverable_fail_closed
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_commit_failure_before_lifecycle_state_commit_rolls_back_no_partial_create
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_commit_failure_on_update_ownership_state_no_false_active
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_reopen_after_uncertain_outcome_repeated_recovery_fail_closed_no_false_promotion
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_same_key_same_payload_replay_deterministic_no_duplicate
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_same_key_different_payload_conflict_fail_closed
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_stale_policy_version_and_ownership_change_during_operation_fail_closed
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_concurrent_install_same_policy_version_no_duplicate_false_active
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_recovery_corrupt_or_mismatched_canonical_body_fails_closed[UPDATE controller_policy_bodies SET canonical_rules_json='[bad' WHERE policy_id=? AND policy_version=?]
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_recovery_corrupt_or_mismatched_canonical_body_fails_closed[UPDATE controller_policy_bodies SET compiled_rule_digest='0'*64 WHERE policy_id=? AND policy_version=?]
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_recovery_missing_canonical_body_for_schema_path_fail_closed_in_covered_ops
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_repeated_recovery_and_db_reopen_remain_fail_closed_no_false_active
+PASSED broker/tests/test_firewall_controller_j17_persistence_integrity.py::test_cas_stale_snapshot_rejected_and_state_preserved
+PASSED broker/tests/test_firewall_controller_j8_hardening.py::test_xproc_conflicting_idempotency_repeatable_no_false_success
+PASSED broker/tests/test_firewall_controller_j8_hardening.py::test_strict_auth_rejects_missing_peer_identity_on_inspect
+PASSED broker/tests/test_firewall_controller_j8_hardening.py::test_strict_auth_rejects_unauthorized_uid_on_verify
+PASSED broker/tests/test_firewall_controller_j8_hardening.py::test_strict_auth_rejects_caller_trusted_identity_flag
+PASSED broker/tests/test_firewall_controller_j8_hardening.py::test_reconcile_rejects_wrong_owner_binding
+PASSED broker/tests/test_firewall_controller_j8_hardening.py::test_reconcile_marks_uncertain_on_missing_canonical_body_if_previously_persisted_removed
+PASSED broker/tests/test_firewall_controller_j8_hardening.py::test_reconcile_marks_uncertain_on_wrong_policy_version_binding_in_canonical_body
+PASSED broker/tests/test_firewall_controller_j8_hardening.py::test_verify_rejects_tampered_compiled_digest_in_canonical_body
+PASSED broker/tests/test_firewall_controller_j8_hardening.py::test_legacy_install_without_rules_has_no_canonical_body_and_no_auto_conversion
+PASSED broker/tests/test_firewall_controller_j8_hardening.py::test_canonical_body_invalid_json_fails_closed_with_bounded_error
+PASSED broker/tests/test_firewall_controller_j8_hardening.py::test_temp_db_reopen_preserves_canonical_body_and_validation
+PASSED broker/tests/test_firewall_controller_j9_reconciliation_integrity.py::test_reconcile_does_not_silently_skip_verifying_state
+PASSED broker/tests/test_firewall_controller_j9_reconciliation_integrity.py::test_reconcile_repeated_active_policy_is_idempotent_and_safe
+PASSED broker/tests/test_firewall_controller_j9_reconciliation_integrity.py::test_reconcile_accounts_for_each_owned_record_without_silent_skip
+PASSED broker/tests/test_firewall_controller_j9_reconciliation_integrity.py::test_reconcile_tampered_canonical_body_marks_uncertain_no_false_active
+PASSED broker/tests/test_firewall_controller_j9_reconciliation_integrity.py::test_reconcile_unknown_persisted_state_fails_closed_uncertain
+PASSED broker/tests/test_firewall_controller_lifecycle_idempotency.py::test_lifecycle_verify_activates
+PASSED broker/tests/test_firewall_controller_lifecycle_idempotency.py::test_idempotency_sqlite_same_key_same_request
+PASSED broker/tests/test_firewall_controller_lifecycle_idempotency.py::test_idempotency_conflict_sqlite
+PASSED broker/tests/test_firewall_controller_lifecycle_idempotency.py::test_revoke_requires_ownership_lc
+PASSED broker/tests/test_firewall_controller_lifecycle_idempotency.py::test_inspect_requires_ownership_lc
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_evidence_uses_persisted_ownership_not_backend_or_caller_metadata
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_helper_requests_are_stamped_from_persisted_ownership
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_correct_ownership_and_matching_digest_inspect_succeeds
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_spoofed_ownership_metadata_rejected[instance_id-spoofed-instance]
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_spoofed_ownership_metadata_rejected[network_id-spoofed-network]
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_spoofed_ownership_metadata_rejected[ownership_record_id-spoofed-ownership]
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_spoofed_ownership_metadata_rejected[ownership_reference-spoofed-reference]
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_mismatched_digest_rejected_for_every_ownership_operation[inspect_policy]
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_mismatched_digest_rejected_for_every_ownership_operation[verify_policy]
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_mismatched_digest_rejected_for_every_ownership_operation[revoke_policy]
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_mismatched_digest_rejected_for_every_ownership_operation[remove_stale_policy]
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_missing_ownership_rejected[inspect_policy]
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_missing_ownership_rejected[verify_policy]
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_missing_ownership_rejected[revoke_policy]
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_missing_ownership_rejected[remove_stale_policy]
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_wrong_policy_id_or_version_rejected_as_missing_ownership
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_stale_policy_version_rejected
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_ownership_record_belonging_to_another_instance_rejected
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_concurrent_authoritative_ownership_change_invalidates_old_request
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_ownership_change_during_backend_execution_prevents_promotion
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_reconciliation_rejects_mismatched_ownership_fields
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_reconciliation_requests_use_persisted_ownership_fields
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_first_install_ignores_caller_supplied_ownership_reference
+PASSED broker/tests/test_firewall_controller_ownership_binding_remediation.py::test_existing_ownership_reference_mismatch_rejected_on_install
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_fail_during_lifecycle_update_no_false_success
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_fail_while_persisting_evidence_no_active_promotion
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_fail_during_active_promotion_no_unsafe_state
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_sqlite_locked_busy_response_fails_closed
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_db_unavailable_after_backend_modification
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_fail_before_lifecycle_transaction_begins_no_false_success
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_fail_during_lifecycle_update_transition
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_fail_while_persisting_lifecycle_history
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_fail_during_active_promotion_targeted
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_db_unavailable_before_reconciliation
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_db_unavailable_during_reconciliation_operation
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_corrupt_lifecycle_version_fail_closed
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_corrupt_idempotency_record_fail_closed
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_corrupt_evidence_record_fail_closed
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_corrupt_ownership_policy_relationship_fail_closed
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_recovery_after_failed_evidence_persistence_fresh_process
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_recovery_after_failed_reconciliation_write_fresh_process
+PASSED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_repeated_db_unavailability_recovery_attempt
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_ownership_survives_service_recreation
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_lifecycle_history_survives_service_recreation
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_idempotency_survives_service_recreation
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_ownership_cannot_be_silently_reassigned
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_ownership_missing_conflicting_or_corrupt_fail_closed
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_lifecycle_cas_conflict_rejected
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_invalid_lifecycle_transition_rejected
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_uncertain_not_promoted_to_active_without_evidence
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_idempotency_conflict_across_service_recreation
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_transport_uses_authoritative_persistence
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_transport_cannot_bypass_ownership_checks
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_transport_preserves_auth
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_recovery_crash_before_backend_execution
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_recovery_backend_completed_but_response_lost
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_recovery_evidence_persisted_but_promotion_incomplete
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_recovery_ownership_missing_or_inconsistent
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_recovery_backend_readback_unavailable
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_recovery_backend_completed_but_evidence_not_persisted
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_recovery_duplicate_recovery_request
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_recovery_partial_revoke_or_cleanup
+PASSED broker/tests/test_firewall_controller_persistent_recovery_integration.py::test_transport_fail_closed_on_persistence_error
+PASSED broker/tests/test_firewall_controller_policy_version_hardening.py::test_contract_rejects_bool_and_negative_policy_version
+PASSED broker/tests/test_firewall_controller_policy_version_hardening.py::test_controller_rejects_bool_policy_version_on_install
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_unauthorized_identity_cannot_retrieve_cached_success_response
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_authorized_identical_request_receives_original_response
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_same_key_different_digest_is_rejected
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_identity_change_does_not_inherit_another_identity_cached_response
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_replay_does_not_bypass_current_ownership_validation
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_get_by_policy_returns_none_only_for_genuine_absence
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_get_by_policy_propagates_storage_error
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_get_idempotency_record_propagates_storage_error
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_ownership_and_evidence_listing_propagates_storage_error
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_controller_fails_closed_when_ownership_storage_read_fails
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_reconciliation_does_not_treat_storage_failure_as_missing_ownership
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_idempotency_storage_read_failure_fails_closed
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_missing_operation_allowlist_denies_all_helper_operations
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_empty_operation_allowlist_denies_all_helper_operations
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_only_explicitly_configured_operation_is_allowed
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_unknown_helper_operation_is_rejected
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_authorized_backend_fixture_explicitly_configures_operations
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_compiled_policy_unknown_nested_field_rejected
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_compiled_policy_unsupported_type_rejected
+PASSED broker/tests/test_firewall_controller_remediation_authorization_storage_allowlists.py::test_compiled_policy_raw_expression_field_rejected
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_install_backend_failure_persists_failed_state_and_history
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_install_failure_state_write_failure_is_sanitized[injected transition write failure]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_install_failure_state_write_failure_is_sanitized[database is locked: secret detail must not leak]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_install_failure_history_write_failure_is_sanitized_and_not_overclaimed
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_install_failure_does_not_overwrite_advanced_or_uncertain_state
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_install_failure_persistence_recovery_after_db_available
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_policy_id_rejected_before_persistence['p1\\n']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_policy_id_rejected_before_persistence['p1\\r']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_policy_id_rejected_before_persistence[' p1']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_policy_id_rejected_before_persistence['p1 ']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_policy_id_rejected_before_persistence['p 1']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_policy_id_rejected_before_persistence['p\\t1']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_policy_id_rejected_before_persistence['p\\x00']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_policy_id_rejected_before_persistence['ppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_policy_id_rejected_before_persistence['']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_policy_id_rejected_before_persistence[None]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_policy_id_rejected_before_persistence[123]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_policy_id_rejected_before_persistence[['p1']]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_policy_id_rejected_before_persistence[{'id': 'p1'}]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_instance_id_rejected_before_persistence['p1\\n']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_instance_id_rejected_before_persistence['p1\\r']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_instance_id_rejected_before_persistence[' p1']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_instance_id_rejected_before_persistence['p1 ']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_instance_id_rejected_before_persistence['p 1']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_instance_id_rejected_before_persistence['p\\t1']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_instance_id_rejected_before_persistence['p\\x00']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_instance_id_rejected_before_persistence['ppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_instance_id_rejected_before_persistence['']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_instance_id_rejected_before_persistence[123]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_instance_id_rejected_before_persistence[['p1']]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_instance_id_rejected_before_persistence[{'id': 'p1'}]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_network_id_rejected_before_persistence['p1\\n']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_network_id_rejected_before_persistence['p1\\r']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_network_id_rejected_before_persistence[' p1']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_network_id_rejected_before_persistence['p1 ']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_network_id_rejected_before_persistence['p 1']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_network_id_rejected_before_persistence['p\\t1']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_network_id_rejected_before_persistence['p\\x00']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_network_id_rejected_before_persistence['ppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_network_id_rejected_before_persistence['']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_network_id_rejected_before_persistence[123]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_network_id_rejected_before_persistence[['p1']]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_invalid_network_id_rejected_before_persistence[{'id': 'p1'}]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_optional_instance_network_omission_remains_supported[None-None]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_optional_instance_network_omission_remains_supported[inst1-net1]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_controller_identifier_rule_matches_helper_contract
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_valid_boundary_identifiers_accepted[AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA-iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii-nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_valid_boundary_identifiers_accepted[P-1_2.3:4-I-1_2.3:4-N-1_2.3:4]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_corrupt_authoritative_identifier_fails_closed[instance_id-i1\n]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_corrupt_authoritative_identifier_fails_closed[instance_id-i1\r]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_corrupt_authoritative_identifier_fails_closed[network_id-n1\n]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_corrupt_authoritative_identifier_fails_closed[network_id-n1\r]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_helper_contract_rejects_malformed_optional_identifiers[instance_id-i1\n]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_helper_contract_rejects_malformed_optional_identifiers[network_id-n1\r]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_helper_contract_rejects_malformed_optional_identifiers[instance_id-i1\r\n]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_helper_contract_rejects_malformed_optional_identifiers[network_id- n1]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_corrupt_stored_digest_denies_replay_without_disclosure[None]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_corrupt_stored_digest_denies_replay_without_disclosure['']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_corrupt_stored_digest_denies_replay_without_disclosure['not-a-digest']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_corrupt_stored_digest_denies_replay_without_disclosure['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_corrupt_stored_digest_denies_replay_without_disclosure['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_corrupt_stored_digest_denies_replay_without_disclosure['gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_corrupt_stored_digest_denies_replay_without_disclosure[123]
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_corrupt_stored_digest_denies_replay_without_disclosure[b'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa']
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_corrupt_digest_audit_failure_does_not_prevent_denial
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_valid_digest_with_matching_peer_and_ownership_replays
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_valid_digest_with_different_authorized_peer_is_rejected
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_corrupt_digest_after_process_restart_denies_and_is_not_repaired
+PASSED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_concurrent_replay_with_corrupt_digest_never_returns_cached_response
+PASSED broker/tests/test_firewall_controller_revoke_lifecycle_remediation.py::test_successful_revoke_matching_digest_is_confirmed_and_evidence_gated
+PASSED broker/tests/test_firewall_controller_revoke_lifecycle_remediation.py::test_mismatched_digest_never_revokes
+PASSED broker/tests/test_firewall_controller_revoke_lifecycle_remediation.py::test_ownership_change_during_revoke_prevents_revoked_promotion
+PASSED broker/tests/test_firewall_controller_revoke_lifecycle_remediation.py::test_repeated_revoke_same_idempotency_key_returns_original_response
+PASSED broker/tests/test_firewall_controller_revoke_lifecycle_remediation.py::test_repeated_revoke_with_new_key_is_idempotent_without_backend_side_effect
+PASSED broker/tests/test_firewall_controller_revoke_lifecycle_remediation.py::test_backend_revoke_failure_keeps_revoking_and_retry_succeeds
+PASSED broker/tests/test_firewall_controller_revoke_lifecycle_remediation.py::test_backend_success_followed_by_readback_failure_is_not_revoked
+PASSED broker/tests/test_firewall_controller_revoke_lifecycle_remediation.py::test_retry_after_readback_failure_does_not_issue_duplicate_revoke
+PASSED broker/tests/test_firewall_controller_revoke_lifecycle_remediation.py::test_evidence_persistence_failure_keeps_revoking_then_retry_succeeds
+PASSED broker/tests/test_firewall_controller_revoke_lifecycle_remediation.py::test_lifecycle_persistence_failure_keeps_revoking_then_retry_succeeds
+PASSED broker/tests/test_firewall_controller_revoke_lifecycle_remediation.py::test_restart_while_revoking_reconciles_with_evidence_before_revoked
+PASSED broker/tests/test_firewall_controller_revoke_lifecycle_remediation.py::test_uncertain_backend_outcome_is_retryable[timeout]
+PASSED broker/tests/test_firewall_controller_revoke_lifecycle_remediation.py::test_uncertain_backend_outcome_is_retryable[uncertain]
+PASSED broker/tests/test_firewall_controller_revoke_lifecycle_remediation.py::test_concurrent_revoke_requests_converge_without_invalid_transition
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_retry_after_backend_failure_reads_back_and_recovers
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_retry_after_backend_success_lost_response_recovers_without_duplicate_revoke
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_retry_after_readback_failure_recovers
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_retry_after_evidence_persistence_failure_recovers
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_retry_after_lifecycle_persistence_failure_recovers
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_retry_when_backend_state_unknown_stays_uncertain
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_retry_when_backend_still_present_reissues_revoke
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_concurrent_same_key_revoke_retries_converge
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_different_key_retry_after_failure_still_recovers
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_reconcile_propagates_revocation_evidence_persistence_failure
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_reconcile_propagates_revoked_lifecycle_persistence_failure
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_reconcile_propagates_reconciliation_status_persistence_failure
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_reconcile_preserves_backend_uncertainty_as_non_persistence_outcome
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_reconcile_recovers_after_database_restoration
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_idempotency_response_persistence_failure_is_not_masked_and_retry_recovers
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_reconcile_ownership_lookup_failure_is_not_treated_as_absence
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_reconcile_reports_unknown_lifecycle_state_without_rewriting[BOGUS_STATE]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_reconcile_reports_unknown_lifecycle_state_without_rewriting[]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_reconcile_reports_unknown_lifecycle_state_without_rewriting[revoked]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_reconcile_preserves_valid_records_when_another_state_is_corrupt
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_cross_family_substitution_rejected_for_every_ownership_operation[inspect_policy]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_cross_family_substitution_rejected_for_every_ownership_operation[verify_policy]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_cross_family_substitution_rejected_for_every_ownership_operation[revoke_policy]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_cross_family_substitution_rejected_for_every_ownership_operation[remove_stale_policy]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_required_family_mismatch_without_explicit_address_family_rejected
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_persisted_family_change_invalidates_in_flight_ownership_identity
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_reconcile_requires_matching_evidence_family_for_active_promotion
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_revocation_evidence_requires_matching_family
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_same_compiled_body_replays
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_different_compiled_body_is_rejected
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_different_nested_compiled_content_is_rejected
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_changed_security_field_is_rejected[address_family-ipv6]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_changed_security_field_is_rejected[required_families-value1]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_changed_security_field_is_rejected[instance_id-i-changed]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_changed_security_field_is_rejected[network_id-n-changed]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_changed_security_field_is_rejected[policy_version-2]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_changed_security_field_is_rejected[compiled_rule_digest-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_different_operation_uses_separate_idempotency_scope
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_key_reuse_after_process_restart_replays_bound_response
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_unsupported_compiled_value_type_fails_closed
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_noncanonical_nan_compiled_value_fails_closed
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_non_string_compiled_dict_key_fails_closed
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_already_revoked_without_evidence_is_rejected
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_already_revoked_with_mismatched_evidence_is_rejected
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_already_revoked_with_wrong_family_evidence_is_rejected
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_already_revoked_with_valid_evidence_is_idempotent_success
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_reconcile_revoked_without_evidence_is_uncertain
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_reconcile_revoked_with_valid_evidence_is_reconciled
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_digest[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_digest[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\r]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_digest[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\r\n]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_digest[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_digest[ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_digest[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_digest[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_digest[gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_digest[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaag]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_accepts_exact_digest[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_accepts_exact_digest[AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_accepts_exact_digest[0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[abc\n-request_id]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[abc\n-operation_id]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[abc\n-idempotency_key]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[abc\r-request_id]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[abc\r-operation_id]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[abc\r-idempotency_key]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[abc\r\n-request_id]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[abc\r\n-operation_id]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[abc\r\n-idempotency_key]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[ abc-request_id]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[ abc-operation_id]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[ abc-idempotency_key]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[abc -request_id]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[abc -operation_id]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[abc -idempotency_key]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[ab c-request_id]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[ab c-operation_id]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[ab c-idempotency_key]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[abc!-request_id]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[abc!-operation_id]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_rejects_non_exact_identifiers[abc!-idempotency_key]
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_helper_contract_accepts_identifier_boundaries
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_controller_rejects_digest_with_trailing_newline
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_controller_rejects_nonhex_stored_digest
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_strict_auth_none_operations_uses_documented_supported_default
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_strict_auth_explicit_empty_operations_denies_every_operation
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_strict_auth_partial_operations_allows_only_configured_operation
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_strict_auth_complete_operations_allows_all_supported_operations
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_service_explicit_empty_operations_denies_every_request
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_service_omitted_operations_uses_default_and_allows_install
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_replay_same_identity_and_same_ownership_returns_cached_response
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_replay_different_identity_is_rejected
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_replay_after_ownership_record_replacement_is_rejected
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_replay_after_in_place_instance_change_with_omitted_fields_is_rejected
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_replay_after_family_change_with_omitted_family_is_rejected
+PASSED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_concurrent_replay_and_ownership_change_never_returns_stale_success
+PASSED broker/tests/test_firewall_controller_rule_lifecycle_2j5.py::test_controller_install_normalizes_rules_and_digests_before_helper_boundary
+PASSED broker/tests/test_firewall_controller_rule_lifecycle_2j5.py::test_controller_rejects_caller_supplied_digest_mismatch_on_install
+PASSED broker/tests/test_firewall_controller_rule_lifecycle_2j5.py::test_helper_ingress_rejects_malformed_schema_v1_rules
+PASSED broker/tests/test_firewall_controller_rule_lifecycle_2j5.py::test_helper_ingress_accepts_valid_schema_v1_rules
+PASSED broker/tests/test_firewall_controller_rule_lifecycle_2j5.py::test_helper_executor_backend_rejects_schema_v1_digest_mismatch_and_does_not_install
+PASSED broker/tests/test_firewall_controller_rule_lifecycle_2j5.py::test_mock_firewall_controller_state_rejects_schema_v1_digest_mismatch_on_install
+PASSED broker/tests/test_firewall_controller_rule_lifecycle_2j5.py::test_controller_install_then_inspect_reflects_installed_state_mock_only
+PASSED broker/tests/test_firewall_controller_rule_lifecycle_2j5.py::test_legacy_payload_without_rules_still_supported_on_install_mock_path
+PASSED broker/tests/test_firewall_controller_rule_schema_v1.py::test_valid_tcp_and_udp_rules_install_via_controller
+PASSED broker/tests/test_firewall_controller_rule_schema_v1.py::test_invalid_protocol_and_icmp_rejected
+PASSED broker/tests/test_firewall_controller_rule_schema_v1.py::test_missing_and_unknown_fields_rejected
+PASSED broker/tests/test_firewall_controller_rule_schema_v1.py::test_incorrect_types_and_port_boundaries_rejected
+PASSED broker/tests/test_firewall_controller_rule_schema_v1.py::test_invalid_ip_cidr_and_family_mismatch_rejected
+PASSED broker/tests/test_firewall_controller_rule_schema_v1.py::test_normalization_and_digest_stability_differentiation
+PASSED broker/tests/test_firewall_controller_rule_schema_v1.py::test_caller_controlled_identity_and_ownership_fields_rejected_in_rules
+PASSED broker/tests/test_firewall_controller_rule_schema_v1.py::test_compiled_digest_mismatch_rejected
+PASSED broker/tests/test_firewall_controller_rule_schema_v1.py::test_duplicate_ambiguous_and_full_range_accept_rejected
+PASSED broker/tests/test_firewall_controller_rule_schema_v1.py::test_required_families_validation_and_ipv6_behavior
+PASSED broker/tests/test_firewall_controller_security_remediation.py::test_strict_auth_missing_identity
+PASSED broker/tests/test_firewall_controller_security_remediation.py::test_strict_auth_unauthorized_uid
+PASSED broker/tests/test_firewall_controller_security_remediation.py::test_strict_auth_caller_trusted_rejected
+PASSED broker/tests/test_firewall_controller_security_remediation.py::test_strict_auth_header_ignored
+PASSED broker/tests/test_firewall_controller_service_skeleton.py::test_service_health_check
+PASSED broker/tests/test_firewall_controller_service_skeleton.py::test_service_unauthorized_caller_trusted
+PASSED broker/tests/test_firewall_controller_service_skeleton.py::test_service_invalid_request
+PASSED broker/tests/test_firewall_controller_service_skeleton.py::test_service_invalid_digest
+PASSED broker/tests/test_firewall_controller_service_skeleton.py::test_service_idempotency_conflict
+PASSED broker/tests/test_firewall_controller_service_skeleton.py::test_service_duplicate_request
+PASSED broker/tests/test_firewall_controller_service_skeleton.py::test_service_partial_ipv6_install
+PASSED broker/tests/test_firewall_controller_service_skeleton.py::test_service_ownership_mismatch
+PASSED broker/tests/test_firewall_controller_service_skeleton.py::test_service_forged_evidence_not_trusted
+PASSED broker/tests/test_firewall_controller_targeted_integrity.py::test_duplicate_install_same_key_completed
+PASSED broker/tests/test_firewall_controller_targeted_integrity.py::test_idempotency_conflict_different_payload
+PASSED broker/tests/test_firewall_controller_targeted_integrity.py::test_lifecycle_cas_version_increment
+PASSED broker/tests/test_firewall_controller_transport_mock.py::test_transport_valid_identity
+PASSED broker/tests/test_firewall_controller_transport_mock.py::test_transport_missing_identity
+PASSED broker/tests/test_firewall_controller_transport_mock.py::test_transport_unauthorized
+PASSED broker/tests/test_firewall_controller_transport_mock.py::test_transport_caller_identity_ignored
+PASSED broker/tests/test_firewall_lifecycle_integrity.py::test_direct_verified_without_evidence_rejected
+PASSED broker/tests/test_firewall_lifecycle_integrity.py::test_forged_evidence_rejected
+PASSED broker/tests/test_firewall_lifecycle_integrity.py::test_valid_evidence_allows_verified
+PASSED broker/tests/test_firewall_lifecycle_integrity.py::test_digest_mismatch_rejected
+PASSED broker/tests/test_firewall_lifecycle_integrity.py::test_ip_outside_subnet_rejected
+PASSED broker/tests/test_firewall_lifecycle_integrity.py::test_missing_subnet_metadata_rejected
+PASSED broker/tests/test_firewall_lifecycle_integrity.py::test_revocation_idempotent
+PASSED broker/tests/test_firewall_policy.py::test_default_deny_and_restrictions
+PASSED broker/tests/test_firewall_policy.py::test_unauthorized_destination_rejection
+PASSED broker/tests/test_firewall_policy.py::test_unrestricted_port_rejected
+PASSED broker/tests/test_firewall_policy.py::test_ipv4_ipv6_validation
+PASSED broker/tests/test_firewall_policy.py::test_invalid_ip_protocol
+PASSED broker/tests/test_firewall_policy.py::test_duplicate_and_conflicting_rules
+PASSED broker/tests/test_firewall_policy.py::test_arbitrary_subnet_caller_rejected
+PASSED broker/tests/test_firewall_policy.py::test_no_unrestricted_accept
+PASSED broker/tests/test_firewall_policy.py::test_persistence_and_lifecycle
+PASSED broker/tests/test_firewall_policy.py::test_mock_controller_failures
+PASSED broker/tests/test_firewall_policy.py::test_revocation_idempotent
+PASSED broker/tests/test_firewall_policy_hardening.py::test_arbitrary_caller_network_id_rejected
+PASSED broker/tests/test_firewall_policy_hardening.py::test_network_instance_mismatch
+PASSED broker/tests/test_firewall_policy_hardening.py::test_ipv4_mapped_ipv6_rejected
+PASSED broker/tests/test_firewall_policy_hardening.py::test_unrestricted_cidr_rejected
+PASSED broker/tests/test_firewall_policy_hardening.py::test_ip_version_mismatch
+PASSED broker/tests/test_firewall_policy_hardening.py::test_both_rejected
+PASSED broker/tests/test_firewall_policy_hardening.py::test_unverified_policy_to_compiler_rejected
+PASSED broker/tests/test_firewall_policy_hardening.py::test_proxy_source_rejected
+PASSED broker/tests/test_firewall_policy_hardening.py::test_valid_challenge_network_private_ip_works
+FAILED broker/tests/test_firewall_controller_persistence_failure_closure.py::test_corrupt_lifecycle_record_fail_closed
+1 failed, 792 passed, 1 warning in 311.23s (0:05:11)

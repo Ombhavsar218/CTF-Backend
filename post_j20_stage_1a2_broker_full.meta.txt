@@ -1,0 +1,2 @@
+START=2026-11-17T13:48:22.7448498+05:30
+CMD=.\venv\Scripts\python.exe -m pytest broker/tests -q

@@ -10,6 +10,8 @@ from rest_framework_simplejwt.token_blacklist.models import (
 )
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from platform_settings.services import get_platform_settings
+
 from .serializers import (
     ChangePasswordSerializer,
     OnboardingSerializer,
@@ -18,7 +20,12 @@ from .serializers import (
     RegisterSerializer,
     UserSerializer,
 )
-from .throttling import PasswordChangeThrottle
+from .throttling import (
+    LoginThrottle,
+    PasswordChangeThrottle,
+    RegisterThrottle,
+    TokenRefreshThrottle,
+)
 
 
 def _blacklist_refresh_tokens(user):
@@ -34,12 +41,20 @@ def _blacklist_refresh_tokens(user):
             BlacklistedToken.objects.get_or_create(token=token)
 
 
-
 class RegisterView(generics.CreateAPIView):
     """Create a new user account. Public endpoint."""
 
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [RegisterThrottle]
+
+    def post(self, request, *args, **kwargs):
+        if not get_platform_settings().allow_registration:
+            return Response(
+                {'detail': 'Registration is currently disabled.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().post(request, *args, **kwargs)
 
 
 class MeView(generics.RetrieveUpdateAPIView):
@@ -203,9 +218,18 @@ class OnboardingView(APIView):
         serializer.is_valid(raise_exception=True)
 
         user = request.user
-        user.onboarding = dict(serializer.validated_data)
+        data = dict(serializer.validated_data)
+        user.onboarding = data
         user.onboardingCompleted = True
-        user.save(update_fields=['onboarding', 'onboardingCompleted'])
+        update_fields = ['onboarding', 'onboardingCompleted']
+        # Initialize learning_mode from a valid onboarding userType only when
+        # the user has not explicitly selected a learning mode via preferences.
+        # Resubmitting onboarding must never overwrite an explicit selection.
+        mode = user.normalize_learning_mode(data.get('userType'))
+        if mode and not user.learning_mode_user_selected:
+            user.learning_mode = mode
+            update_fields.append('learning_mode')
+        user.save(update_fields=update_fields)
 
         return Response(
             UserSerializer(user, context={'request': request}).data,

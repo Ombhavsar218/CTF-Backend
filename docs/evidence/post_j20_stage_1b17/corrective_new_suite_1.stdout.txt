@@ -1,0 +1,188 @@
+...........FFFFF...FF......                                              [100%]
+================================== FAILURES ===================================
+________ test_r16_02_verified_promotion_persists_reconciliation_status ________
+
+    def test_r16_02_verified_promotion_persists_reconciliation_status():
+        store = _store()
+        svc = _svc(store)
+        pid = "b17-prom-active"
+>       digest = _installed(store, svc, pid)
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:210: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+store = <broker.firewall_controller_service.ownership_store.ControllerOwnershipStore object at 0x0000018E26186B30>
+svc = <broker.firewall_controller_service.controller_service.FirewallControllerService object at 0x0000018E26186A10>
+pid = 'b17-prom-active'
+
+    def _installed(store, svc, pid):
+        req = _install_req(pid=pid)
+>       assert svc.install_policy(req)['status'] == 'ok'
+E       AssertionError: assert 'error' == 'ok'
+E         
+E         - ok
+E         + error
+
+broker\tests\test_post_j20_stage_1b3_durable_crash_recovery.py:265: AssertionError
+_______ test_r16_02_revoke_confirmation_persists_reconciliation_status ________
+
+    def test_r16_02_revoke_confirmation_persists_reconciliation_status():
+        store = _store()
+        backend = _BackendWithState(_CountingBackend(authorized_backend()), "revoked")
+        svc = _svc(store, backend)
+        pid = "b17-prom-revoke"
+>       digest = _installed(store, svc, pid)
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:225: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+store = <broker.firewall_controller_service.ownership_store.ControllerOwnershipStore object at 0x0000018E2628BA00>
+svc = <broker.firewall_controller_service.controller_service.FirewallControllerService object at 0x0000018E2628B940>
+pid = 'b17-prom-revoke'
+
+    def _installed(store, svc, pid):
+        req = _install_req(pid=pid)
+>       assert svc.install_policy(req)['status'] == 'ok'
+E       AssertionError: assert 'error' == 'ok'
+E         
+E         - ok
+E         + error
+
+broker\tests\test_post_j20_stage_1b3_durable_crash_recovery.py:265: AssertionError
+________ test_r16_02_verifying_recovery_persists_reconciliation_status ________
+
+    def test_r16_02_verifying_recovery_persists_reconciliation_status():
+        store = _store()
+        svc = _svc(store)
+        pid = "b17-prom-verifying"
+>       digest, _oid = _verifying_with_evidence(store, svc, pid)
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:237: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+broker\tests\test_post_j20_stage_1b3_durable_crash_recovery.py:277: in _verifying_with_evidence
+    digest = _installed(store, svc, pid)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+store = <broker.firewall_controller_service.ownership_store.ControllerOwnershipStore object at 0x0000018E26327640>
+svc = <broker.firewall_controller_service.controller_service.FirewallControllerService object at 0x0000018E263275B0>
+pid = 'b17-prom-verifying'
+
+    def _installed(store, svc, pid):
+        req = _install_req(pid=pid)
+>       assert svc.install_policy(req)['status'] == 'ok'
+E       AssertionError: assert 'error' == 'ok'
+E         
+E         - ok
+E         + error
+
+broker\tests\test_post_j20_stage_1b3_durable_crash_recovery.py:265: AssertionError
+____________ test_r16_02_status_persistence_failure_is_fail_closed ____________
+
+    def test_r16_02_status_persistence_failure_is_fail_closed():
+        store = _FailingStatusStore(db_path=_db_path())
+        svc = _svc(store)
+        pid = "b17-status-fail"
+>       digest = _installed(store, svc, pid)
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:248: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+store = <broker.tests.test_post_j20_stage_1b17_remediation._FailingStatusStore object at 0x0000018E2604C9A0>
+svc = <broker.firewall_controller_service.controller_service.FirewallControllerService object at 0x0000018E2604E020>
+pid = 'b17-status-fail'
+
+    def _installed(store, svc, pid):
+        req = _install_req(pid=pid)
+>       assert svc.install_policy(req)['status'] == 'ok'
+E       AssertionError: assert 'error' == 'ok'
+E         
+E         - ok
+E         + error
+
+broker\tests\test_post_j20_stage_1b3_durable_crash_recovery.py:265: AssertionError
+_________ test_r16_02_status_cas_conflict_is_uncertain_not_reconciled _________
+
+    def test_r16_02_status_cas_conflict_is_uncertain_not_reconciled():
+        store = _VersionBumpingStatusStore(db_path=_db_path())
+        svc = _svc(store)
+        pid = "b17-status-cas"
+>       digest = _installed(store, svc, pid)
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:262: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+store = <broker.tests.test_post_j20_stage_1b17_remediation._VersionBumpingStatusStore object at 0x0000018E2624E740>
+svc = <broker.firewall_controller_service.controller_service.FirewallControllerService object at 0x0000018E2624E890>
+pid = 'b17-status-cas'
+
+    def _installed(store, svc, pid):
+        req = _install_req(pid=pid)
+>       assert svc.install_policy(req)['status'] == 'ok'
+E       AssertionError: assert 'error' == 'ok'
+E         
+E         - ok
+E         + error
+
+broker\tests\test_post_j20_stage_1b3_durable_crash_recovery.py:265: AssertionError
+_____ test_r16_06_pending_ledger_filter_does_not_match_overlapping_prefix _____
+
+    def test_r16_06_pending_ledger_filter_does_not_match_overlapping_prefix():
+        store = _store()
+        svc = _svc(store)
+>       digest = _installed(store, svc, "p1")
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:311: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+store = <broker.firewall_controller_service.ownership_store.ControllerOwnershipStore object at 0x0000018E2624AF50>
+svc = <broker.firewall_controller_service.controller_service.FirewallControllerService object at 0x0000018E2624A470>
+pid = 'p1'
+
+    def _installed(store, svc, pid):
+        req = _install_req(pid=pid)
+>       assert svc.install_policy(req)['status'] == 'ok'
+E       AssertionError: assert 'error' == 'ok'
+E         
+E         - ok
+E         + error
+
+broker\tests\test_post_j20_stage_1b3_durable_crash_recovery.py:265: AssertionError
+_________ test_r16_06_full_scan_keeps_overlapping_identities_distinct _________
+
+    def test_r16_06_full_scan_keeps_overlapping_identities_distinct():
+        store = _store()
+        svc = _svc(store)
+        for pid in ("p1", "p10"):
+>           _installed(store, svc, pid)
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:328: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+store = <broker.firewall_controller_service.ownership_store.ControllerOwnershipStore object at 0x0000018E260060B0>
+svc = <broker.firewall_controller_service.controller_service.FirewallControllerService object at 0x0000018E26006740>
+pid = 'p1'
+
+    def _installed(store, svc, pid):
+        req = _install_req(pid=pid)
+>       assert svc.install_policy(req)['status'] == 'ok'
+E       AssertionError: assert 'error' == 'ok'
+E         
+E         - ok
+E         + error
+
+broker\tests\test_post_j20_stage_1b3_durable_crash_recovery.py:265: AssertionError
+============================== warnings summary ===============================
+venv\lib\site-packages\pydantic\_internal\_config.py:291
+  E:\Flag-hunt\ctf-platform-be\venv\lib\site-packages\pydantic\_internal\_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_02_verified_promotion_persists_reconciliation_status
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_02_revoke_confirmation_persists_reconciliation_status
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_02_verifying_recovery_persists_reconciliation_status
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_02_status_persistence_failure_is_fail_closed
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_02_status_cas_conflict_is_uncertain_not_reconciled
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_06_pending_ledger_filter_does_not_match_overlapping_prefix
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_06_full_scan_keeps_overlapping_identities_distinct
+7 failed, 20 passed, 1 warning in 4.17s

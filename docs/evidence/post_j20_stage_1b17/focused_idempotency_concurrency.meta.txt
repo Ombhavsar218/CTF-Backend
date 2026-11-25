@@ -1,0 +1,5 @@
+COMMAND=E:\Flag-hunt\ctf-platform-be\venv\Scripts\python.exe -m pytest broker/tests/test_firewall_controller_concurrency_integrity.py broker/tests/test_firewall_controller_deterministic_concurrency.py broker/tests/test_post_j20_stage_1b4_cross_table_concurrency.py broker/tests/test_firewall_controller_j12_fault_injection_and_races.py -q
+WORKDIR=E:\Flag-hunt\ctf-platform-be
+STARTED=00:00:43.3267219
+DURATION_SECONDS=43.33
+EXIT=0

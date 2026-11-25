@@ -8,7 +8,10 @@ plaintext nor the stored hash ever appears in a response.
 
 import threading
 import time
+from datetime import date as _date
+from datetime import datetime
 from datetime import timedelta
+from datetime import timezone as dt_timezone
 from io import StringIO
 
 from django.contrib.auth import get_user_model
@@ -24,6 +27,7 @@ from challenges.models import Category, Challenge, ChallengeFlag, ChallengeHint
 
 from .models import HintUnlock, Solve, Submission
 from .progression import ELITE_MIN, PROGRESSION_TIERS, progression_for
+from .stats import calculate_streaks, streaks_from_days
 from .services import (
     UNLOCK_STATUS_ALREADY,
     UNLOCK_STATUS_INSUFFICIENT,
@@ -1276,9 +1280,23 @@ class UserStatsTests(TestCase):
         self.assertEqual(
             set(body.keys()),
             {
-                'points', 'earnedPoints', 'spentOnHints', 'solved', 'accuracy',
-                'submissions', 'rank', 'joinDate', 'solvedChallengeIds',
-                'categoryProgress', 'recentActivity', 'progress', 'progression',
+                'points',
+                'earnedPoints',
+                'spentOnHints',
+                'solved',
+                'accuracy',
+                'submissions',
+                'rank',
+                'joinDate',
+                'solvedChallengeIds',
+                'categoryProgress',
+                'recentActivity',
+                'progress',
+                'progression',
+                'current_streak',
+                'longest_streak',
+                'currentStreak',
+                'longestStreak',
             },
         )
         for leaked in ('email', 'password', 'username', 'is_superuser', 'is_staff'):
@@ -1822,3 +1840,520 @@ class AdminAnalyticsApiTests(TestCase):
                 Challenge.objects.get(pk=self.challenge.pk).solves,
             ),
         )
+
+
+class SolveStreakTests(TestCase):
+    """Daily solve streaks derived from the stored ``Solve`` records.
+
+    A "streak day" is a calendar day in Django's configured ``TIME_ZONE`` on
+    which the player recorded at least one successful solve. Only ``Solve``
+    rows count: a failed submission, a hint unlock, a login or simply viewing
+    a challenge never creates a day.
+
+    The fixtures write the ``Solve`` rows directly and then pin their
+    ``created_at`` to a controlled instant, so every assertion is
+    independent of the real current date.
+    """
+
+    STATS_URL = '/api/v1/stats/me/'
+    PASSWORD = 'pass12345'
+
+    def setUp(self):
+        cache.clear()
+        self.category = Category.objects.create(
+            name='Web Exploitation', order=1, color='#3b82f6'
+        )
+        self.challenges = [
+            Challenge.objects.create(
+                title=f'Streak Challenge {index}',
+                category=self.category,
+                points=100,
+                status=Challenge.STATUS_PUBLISHED,
+            )
+            for index in range(8)
+        ]
+        self.client = APIClient()
+
+    # ── Fixture helpers ───────────────────────────────────────────────
+
+    def _user(self, username, **kwargs):
+        return User.objects.create_user(
+            username,
+            f'{username}@example.com',
+            self.PASSWORD,
+            onboardingCompleted=True,
+            **kwargs,
+        )
+
+    def _solve_on(self, user, when, challenge=None):
+        """Record a successful solve at the controlled instant ``when``."""
+        challenge = challenge or self.challenges[0]
+        solve = Solve.objects.create(
+            user=user, challenge=challenge, points=challenge.points
+        )
+        # ``created_at`` is auto_now_add, so it has to be pinned afterwards.
+        Solve.objects.filter(pk=solve.pk).update(created_at=when)
+        return solve
+
+    def _at(self, year, month, day, hour=12, minute=0, tz=None):
+        """An aware instant on the given calendar date."""
+        tz = tz or timezone.get_current_timezone()
+        return timezone.make_aware(
+            datetime(year, month, day, hour, minute), tz
+        )
+
+    def _days_ago(self, days, hour=1):
+        """An aware instant on the local calendar day ``days`` days ago."""
+        target = timezone.localdate() - timedelta(days=days)
+        return timezone.make_aware(
+            datetime(target.year, target.month, target.day, hour),
+            timezone.get_current_timezone(),
+        )
+
+    def _api_streaks(self, user):
+        self.client.force_authenticate(user)
+        response = self.client.get(self.STATS_URL)
+        self.assertEqual(response.status_code, 200, response.content)
+        body = response.json()
+        return body['current_streak'], body['longest_streak']
+
+    # ── 1. No solves ──────────────────────────────────────────────────
+
+    def test_user_without_solves_has_zero_streaks(self):
+        user = self._user('fresh')
+
+        self.assertEqual(
+            calculate_streaks(user),
+            {'current_streak': 0, 'longest_streak': 0},
+        )
+        self.assertEqual(self._api_streaks(user), (0, 0))
+
+    # ── 2. One solve today ────────────────────────────────────────────
+
+    def test_single_solve_today_gives_a_streak_of_one(self):
+        user = self._user('solo')
+        self._solve_on(user, self._at(2024, 5, 10))
+
+        streaks = calculate_streaks(
+            user, now=self._at(2024, 5, 10, hour=18)
+        )
+        self.assertEqual(
+            streaks, {'current_streak': 1, 'longest_streak': 1}
+        )
+
+    def test_single_solve_today_is_visible_through_the_api(self):
+        user = self._user('solo-today')
+        self._solve_on(user, self._days_ago(0))
+
+        self.assertEqual(self._api_streaks(user), (1, 1))
+
+    # ── 3. Consecutive days ending today ──────────────────────────────
+
+    def test_consecutive_days_ending_today_count_backwards(self):
+        user = self._user('runner')
+        for day in (8, 9, 10):
+            self._solve_on(
+                user, self._at(2024, 5, day), self.challenges[day - 8]
+            )
+
+        streaks = calculate_streaks(
+            user, now=self._at(2024, 5, 10, hour=20)
+        )
+        self.assertEqual(
+            streaks, {'current_streak': 3, 'longest_streak': 3}
+        )
+
+    # ── 4. Consecutive days ending yesterday ──────────────────────────
+
+    def test_current_streak_survives_a_day_without_a_solve(self):
+        user = self._user('yesterday')
+        for day in (7, 8, 9):
+            self._solve_on(
+                user, self._at(2024, 5, day), self.challenges[day - 7]
+            )
+
+        streaks = calculate_streaks(
+            user, now=self._at(2024, 5, 10, hour=9)
+        )
+        self.assertEqual(
+            streaks, {'current_streak': 3, 'longest_streak': 3}
+        )
+
+    def test_current_streak_is_zero_two_days_after_the_last_solve(self):
+        user = self._user('stale')
+        self._solve_on(user, self._at(2024, 5, 8))
+
+        streaks = calculate_streaks(
+            user, now=self._at(2024, 5, 10, hour=9)
+        )
+        self.assertEqual(
+            streaks, {'current_streak': 0, 'longest_streak': 1}
+        )
+
+    # ── 5. A gap breaks the current streak ────────────────────────────
+
+    def test_a_gap_breaks_the_current_streak(self):
+        user = self._user('gapped')
+        # The 5th and 6th, then a skipped 7th, then the 8th and 9th.
+        for day in (5, 6, 8, 9):
+            self._solve_on(
+                user, self._at(2024, 5, day), self.challenges[day - 5]
+            )
+
+        streaks = calculate_streaks(
+            user, now=self._at(2024, 5, 9, hour=20)
+        )
+        # The run of the 8th and 9th is broken by the missing 7th, so only
+        # "today" counts towards the current streak.
+        self.assertEqual(
+            streaks, {'current_streak': 2, 'longest_streak': 2}
+        )
+
+    def test_a_gap_of_a_single_day_breaks_the_current_streak(self):
+        user = self._user('gapped')
+        for day in (5, 6, 8):
+            self._solve_on(
+                user, self._at(2024, 5, day), self.challenges[day - 5]
+            )
+
+        streaks = calculate_streaks(
+            user, now=self._at(2024, 5, 8, hour=20)
+        )
+        self.assertEqual(
+            streaks, {'current_streak': 1, 'longest_streak': 2}
+        )
+
+    # ── 6. Historical longest streak with a zero current streak ───────
+
+    def test_longest_streak_keeps_the_historical_best(self):
+        user = self._user('historic')
+        for day in (1, 2, 3, 4, 5):
+            self._solve_on(
+                user, self._at(2024, 4, day), self.challenges[day - 1]
+            )
+        # A later, shorter run must not become the "longest".
+        self._solve_on(user, self._at(2024, 5, 1), self.challenges[5])
+
+        streaks = calculate_streaks(
+            user, now=self._at(2024, 5, 10, hour=9)
+        )
+        self.assertEqual(
+            streaks, {'current_streak': 0, 'longest_streak': 5}
+        )
+
+    # ── 7. Multiple solves on the same day ────────────────────────────
+
+    def test_multiple_solves_on_one_day_count_as_a_single_day(self):
+        user = self._user('busy')
+        self._solve_on(user, self._at(2024, 5, 9, hour=1), self.challenges[0])
+        self._solve_on(user, self._at(2024, 5, 9, hour=9), self.challenges[1])
+        self._solve_on(user, self._at(2024, 5, 9, hour=23), self.challenges[2])
+        self._solve_on(user, self._at(2024, 5, 10, hour=2), self.challenges[3])
+
+        streaks = calculate_streaks(
+            user, now=self._at(2024, 5, 10, hour=20)
+        )
+        self.assertEqual(
+            streaks, {'current_streak': 2, 'longest_streak': 2}
+        )
+
+    # ── 8. Users are independent of each other ────────────────────────
+
+    def test_streaks_are_computed_per_user(self):
+        first = self._user('first')
+        second = self._user('second')
+
+        for days in (1, 0):
+            self._solve_on(
+                first, self._days_ago(days), self.challenges[days]
+            )
+        self._solve_on(second, self._days_ago(6), self.challenges[4])
+
+        self.assertEqual(self._api_streaks(first), (2, 2))
+        self.assertEqual(self._api_streaks(second), (0, 1))
+
+    # ── 9. Failed submissions never count ─────────────────────────────
+
+    def test_failed_submissions_do_not_affect_the_streaks(self):
+        user = self._user('failing')
+        # One real solve two days ago; three wrong attempts today.
+        self._solve_on(user, self._at(2024, 5, 8))
+        for _ in range(3):
+            Submission.objects.create(
+                user=user,
+                challenge=self.challenges[4],
+                correct=False,
+            )
+
+        streaks = calculate_streaks(
+            user, now=self._at(2024, 5, 10, hour=20)
+        )
+        # The wrong attempts neither create a day nor extend the streak.
+        self.assertEqual(
+            streaks, {'current_streak': 0, 'longest_streak': 1}
+        )
+
+    def test_a_correct_submission_without_a_solve_row_does_not_count(self):
+        # The statistics are read from ``Solve`` rows only, so a stray
+        # correct ``Submission`` can never invent a streak day.
+        user = self._user('no-solve-row')
+        Submission.objects.create(
+            user=user, challenge=self.challenges[0], correct=True
+        )
+
+        streaks = calculate_streaks(
+            user, now=self._at(2024, 5, 10, hour=20)
+        )
+        self.assertEqual(
+            streaks, {'current_streak': 0, 'longest_streak': 0}
+        )
+
+    # ── 10. Timezone boundary behaviour ──────────────────────────────
+
+    def test_solve_late_at_night_and_early_morning_land_on_the_right_day(self):
+        user = self._user('boundaries')
+        tz = timezone.get_current_timezone()
+
+        # 23:30 local on the 9th and 00:30 local on the 10th are two
+        # different streak days.
+        self._solve_on(user, self._at(2024, 5, 9, hour=23, minute=30, tz=tz), self.challenges[0])
+        self._solve_on(user, self._at(2024, 5, 10, hour=0, minute=30, tz=tz), self.challenges[1])
+
+        streaks = calculate_streaks(
+            user, now=self._at(2024, 5, 10, hour=12, tz=tz)
+        )
+        self.assertEqual(
+            streaks, {'current_streak': 2, 'longest_streak': 2}
+        )
+
+    def test_utc_instants_are_grouped_by_the_configured_timezone(self):
+        """A solve stored at 23:30 UTC belongs to the next day in UTC+2."""
+        utc = dt_timezone.utc
+        user = self._user('tz-conversion')
+
+        # 2024-05-09 23:30 UTC -> 2024-05-10 01:30 in a UTC+2 zone.
+        self._solve_on(user, self._at(2024, 5, 9, hour=23, minute=30, tz=utc))
+
+        plus_two = timezone.get_fixed_timezone(120)
+
+        # "Now" is the 11th in both zones. In UTC+2 the solve landed on the
+        # 10th, so it is yesterday's day and the current streak is 1.
+        streaks = calculate_streaks(
+            user, now=self._at(2024, 5, 11, hour=12, tz=plus_two), tz=plus_two
+        )
+        self.assertEqual(
+            streaks, {'current_streak': 1, 'longest_streak': 1}
+        )
+
+        # In UTC the very same instant belongs to the 9th, so it is two days
+        # ago: the current streak is 0 while the longest streak stays 1.
+        utc_streaks = calculate_streaks(
+            user, now=self._at(2024, 5, 11, hour=12, tz=utc), tz=utc
+        )
+        self.assertEqual(
+            utc_streaks, {'current_streak': 0, 'longest_streak': 1}
+        )
+
+    # ── 11. Leap days and month / year boundaries ─────────────────────
+
+    def test_leap_day_continues_the_streak(self):
+        user = self._user('leaper')
+        for day in (28, 29):
+            self._solve_on(
+                user, self._at(2024, 2, day), self.challenges[day - 28]
+            )
+
+        streaks = calculate_streaks(
+            user, now=self._at(2024, 2, 29, hour=20)
+        )
+        self.assertEqual(
+            streaks, {'current_streak': 2, 'longest_streak': 2}
+        )
+
+    def test_streak_continues_across_a_month_boundary(self):
+        user = self._user('month')
+        self._solve_on(user, self._at(2024, 1, 30), self.challenges[0])
+        self._solve_on(user, self._at(2024, 1, 31), self.challenges[1])
+        self._solve_on(user, self._at(2024, 2, 1), self.challenges[2])
+
+        streaks = calculate_streaks(
+            user, now=self._at(2024, 2, 1, hour=20)
+        )
+        self.assertEqual(
+            streaks, {'current_streak': 3, 'longest_streak': 3}
+        )
+
+    def test_streak_continues_across_a_year_boundary(self):
+        user = self._user('year')
+        self._solve_on(user, self._at(2023, 12, 30), self.challenges[0])
+        self._solve_on(user, self._at(2023, 12, 31), self.challenges[1])
+        self._solve_on(user, self._at(2024, 1, 1), self.challenges[2])
+
+        streaks = calculate_streaks(
+            user, now=self._at(2024, 1, 1, hour=20)
+        )
+        self.assertEqual(
+            streaks, {'current_streak': 3, 'longest_streak': 3}
+        )
+
+    def test_february_in_a_non_leap_year_has_no_extra_day(self):
+        user = self._user('non-leap')
+        self._solve_on(user, self._at(2023, 2, 27), self.challenges[0])
+        self._solve_on(user, self._at(2023, 2, 28), self.challenges[1])
+        # 2023 is not a leap year, so 1st March follows 28th February.
+        self._solve_on(user, self._at(2023, 3, 1), self.challenges[2])
+
+        streaks = calculate_streaks(
+            user, now=self._at(2023, 3, 1, hour=20)
+        )
+        self.assertEqual(
+            streaks, {'current_streak': 3, 'longest_streak': 3}
+        )
+
+    # ── 12. Authentication and isolation ──────────────────────────────
+
+    def test_stats_endpoint_requires_authentication(self):
+        response = self.client.get(self.STATS_URL)
+        self.assertEqual(response.status_code, 401)
+
+    def test_stats_endpoint_never_returns_another_users_streaks(self):
+        first = self._user('first')
+        second = self._user('second')
+        for days in (1, 0):
+            self._solve_on(
+                first, self._days_ago(days), self.challenges[days]
+            )
+
+        self.client.force_authenticate(second)
+        body = self.client.get(self.STATS_URL).json()
+        self.assertEqual(body['current_streak'], 0)
+        self.assertEqual(body['longest_streak'], 0)
+        self.assertNotIn(
+            first.username,
+            [entry.get('username') for entry in body['recentActivity']],
+        )
+
+    # ── The public shape of the two streak fields ─────────────────────
+
+    def test_the_api_exposes_both_spellings_of_the_streaks(self):
+        """The snake_case contract names and their camelCase aliases agree."""
+        user = self._user('dual')
+        self._solve_on(user, self._days_ago(0), self.challenges[0])
+        self._solve_on(user, self._days_ago(1), self.challenges[1])
+
+        self.client.force_authenticate(user)
+        body = self.client.get(self.STATS_URL).json()
+
+        self.assertEqual(body['current_streak'], 2)
+        self.assertEqual(body['longest_streak'], 2)
+        self.assertEqual(body['currentStreak'], body['current_streak'])
+        self.assertEqual(body['longestStreak'], body['longest_streak'])
+
+    # ── The pure calculation helper ───────────────────────────────────
+    def test_streaks_from_days_is_pure_and_handles_empty_input(self):
+        self.assertEqual(streaks_from_days(set(), _date(2024, 5, 10)), (0, 0))
+        self.assertEqual(
+            streaks_from_days({_date(2024, 5, 10)}, _date(2024, 5, 10)),
+            (1, 1),
+        )
+        self.assertEqual(
+            streaks_from_days(
+                {_date(2024, 5, 8), _date(2024, 5, 9)}, _date(2024, 5, 10)
+            ),
+            (2, 2),
+        )
+        self.assertEqual(
+            streaks_from_days(
+                {_date(2024, 4, 1), _date(2024, 4, 2), _date(2024, 4, 3)},
+                _date(2024, 5, 10),
+            ),
+            (0, 3),
+        )
+
+
+class PersonalHistoryApiTests(TestCase):
+    """The caller's own submission and solve history.
+
+    The URL has no user id, so ownership can only come from the authenticated
+    request. A frontend-supplied ``?user=`` is ignored.
+    """
+
+    def setUp(self):
+        cache.clear()
+        self.category = Category.objects.create(name='History Web')
+        self.challenge = Challenge.objects.create(
+            title='History One',
+            category=self.category,
+            difficulty=Challenge.DIFFICULTY_EASY,
+            points=100,
+            status=Challenge.STATUS_PUBLISHED,
+        )
+        self.other_challenge = Challenge.objects.create(
+            title='History Two',
+            category=self.category,
+            difficulty=Challenge.DIFFICULTY_HARD,
+            points=250,
+            status=Challenge.STATUS_PUBLISHED,
+        )
+        self.user = User.objects.create_user(
+            'history_user', 'history_user@example.com', 'pass12345'
+        )
+        self.other = User.objects.create_user(
+            'history_other', 'history_other@example.com', 'pass12345'
+        )
+        Submission.objects.create(
+            user=self.user, challenge=self.challenge, correct=False
+        )
+        Submission.objects.create(
+            user=self.user, challenge=self.challenge, correct=True
+        )
+        Submission.objects.create(
+            user=self.other, challenge=self.other_challenge, correct=True
+        )
+        Solve.objects.create(
+            user=self.user, challenge=self.challenge, points=100
+        )
+        Solve.objects.create(
+            user=self.other, challenge=self.other_challenge, points=250
+        )
+        self.client = APIClient()
+
+    def test_submission_history_requires_authentication(self):
+        response = self.client.get('/api/v1/submissions/me/')
+        self.assertEqual(response.status_code, 401)
+
+    def test_solve_history_requires_authentication(self):
+        response = self.client.get('/api/v1/solves/me/')
+        self.assertEqual(response.status_code, 401)
+
+    def test_submission_history_only_returns_the_caller_rows(self):
+        self.client.force_authenticate(self.user)
+        response = self.client.get('/api/v1/submissions/me/?user=999999')
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.data['count'], 2)
+        challenge_ids = {
+            row['challengeId'] for row in response.data['results']
+        }
+        self.assertEqual(challenge_ids, {self.challenge.id})
+        self.assertNotIn('flag', response.data['results'][0])
+
+    def test_solve_history_only_returns_the_caller_rows_and_history_points(self):
+        self.client.force_authenticate(self.user)
+        response = self.client.get('/api/v1/solves/me/?user=999999')
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.data['count'], 1)
+        row = response.data['results'][0]
+        self.assertEqual(row['challengeId'], self.challenge.id)
+        self.assertEqual(row['challengeTitle'], 'History One')
+        self.assertEqual(row['challengeCategory'], 'History Web')
+        self.assertEqual(row['challengeDifficulty'], 'Easy')
+        self.assertEqual(row['points'], 100)
+        self.assertIn('createdAt', row)
+
+    def test_history_is_paginated_newest_first(self):
+        self.client.force_authenticate(self.user)
+        response = self.client.get('/api/v1/submissions/me/?page_size=1')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertIsNotNone(response.data['next'])

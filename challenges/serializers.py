@@ -10,11 +10,15 @@ There are three families:
 * ``ChallengeWriteSerializer`` - create/update input. It accepts the plaintext
   flag and immediately hands it to ``ChallengeFlag.set_flag`` (which hashes it);
   the plaintext is never persisted or returned.
+
+``CategorySerializer`` is the public read shape. ``CategoryWriteSerializer`` is
+the small administrator input shape: the slug is always derived server-side.
 """
 
 import re
 
 from django.contrib.auth import get_user_model
+from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from rest_framework import serializers
@@ -26,10 +30,18 @@ from .models import (
     ChallengeFlag,
     ChallengeHint,
 )
+from .mode_content import (
+    MODE_COMPETITOR,
+    is_mode_aware,
+    validate_mode_content,
+)
 
 User = get_user_model()
 
-FLAG_PATTERN = re.compile(r'^CTF\{.+\}$')
+# Challenge authors may supply either the historical CTF{...} prefix or the
+# newer FLAG{...} prefix. Both are stored as salted hashes and verified with
+# the same case-sensitive, constant-time comparison.
+FLAG_PATTERN = re.compile(r'^(?:CTF|FLAG)\{.+\}$')
 
 
 def human_size(num):
@@ -55,6 +67,44 @@ class CategorySerializer(serializers.ModelSerializer):
         if annotated is not None:
             return annotated
         return obj.challenges.filter(status=Challenge.STATUS_PUBLISHED).count()
+
+
+class CategoryWriteSerializer(serializers.ModelSerializer):
+    """Administrator input for a category.
+
+    ``slug`` is intentionally absent: it is derived once from ``name`` by the
+    model and remains stable when the display name is later edited. The
+    project's public IDs are numeric, so a category's slug is not an address.
+    """
+
+    class Meta:
+        model = Category
+        fields = ('name', 'description', 'icon', 'color', 'order')
+
+    def validate_name(self, value):
+        name = (value or '').strip()
+        if not name:
+            raise serializers.ValidationError('Enter a category name.')
+
+        # The model's unique constraint is case-sensitive on SQLite; enforce the
+        # user-facing rule here as well so "Web" and "web" cannot both exist.
+        matches = Category.objects.filter(name__iexact=name)
+        if self.instance is not None:
+            matches = matches.exclude(pk=self.instance.pk)
+        if matches.exists():
+            raise serializers.ValidationError(
+                'A category with this name already exists.'
+            )
+        return name
+
+    def validate_description(self, value):
+        return (value or '').strip()
+
+    def validate_icon(self, value):
+        return (value or '').strip()
+
+    def validate_color(self, value):
+        return (value or '').strip()
 
 
 class PublicHintSerializer(serializers.ModelSerializer):
@@ -114,9 +164,15 @@ class AttachmentSerializer(serializers.ModelSerializer):
         return obj.extension
 
     def get_url(self, obj):
+        # Never expose the storage URL directly: challenge files live under
+        # MEDIA_ROOT and must go through the authorization endpoint so draft
+        # attachments are not publicly enumerable.
         try:
-            url = obj.file.url
-        except ValueError:
+            url = reverse(
+                'challenges_api:attachment-download',
+                args=[obj.challenge_id, obj.pk],
+            )
+        except NoReverseMatch:
             return ''
         request = self.context.get('request')
         return request.build_absolute_uri(url) if request else url
@@ -126,8 +182,10 @@ class ChallengePublicSerializer(serializers.ModelSerializer):
     category = serializers.CharField(source='category.name', read_only=True)
     category_id = serializers.IntegerField(read_only=True)
     connectionInfo = serializers.JSONField(source='connection_info', read_only=True)
+    instanceMode = serializers.CharField(source='runtime_access_mode', read_only=True)
     createdAt = serializers.SerializerMethodField()
     solved = serializers.SerializerMethodField()
+    has_mode_content = serializers.SerializerMethodField()
     hints = PublicHintSerializer(many=True, read_only=True)
     files = AttachmentSerializer(source='attachments', many=True, read_only=True)
 
@@ -137,8 +195,8 @@ class ChallengePublicSerializer(serializers.ModelSerializer):
             'id', 'slug', 'title', 'category', 'category_id', 'difficulty',
             'points', 'description', 'scenario', 'objectives', 'instructions',
             'author', 'tags', 'featured', 'trial', 'solves', 'solved',
-            'connectionInfo', 'cheatsheet', 'hints', 'files', 'createdAt',
-            'status',
+            'has_mode_content', 'challenge_mode', 'connectionInfo', 'instanceMode', 'cheatsheet',
+            'hints', 'files', 'createdAt', 'status',
         )
 
     def get_createdAt(self, obj):
@@ -158,6 +216,22 @@ class ChallengePublicSerializer(serializers.ModelSerializer):
         from submissions.models import Solve
         return Solve.objects.filter(user=user, challenge_id=obj.pk).exists()
 
+    def get_has_mode_content(self, obj):
+        return is_mode_aware(obj)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Mode-aware challenges reserve progressive paid hints for student mode.
+        # Competitors (and unauthenticated callers) must not receive hint
+        # metadata or text. Existing non-mode-aware challenges are unchanged.
+        mode = self.context.get('learning_mode') or MODE_COMPETITOR
+        if is_mode_aware(instance) and mode != 'student':
+            data['hints'] = []
+        # Mode-gated content and solutions are only served by dedicated,
+        # permission-checked endpoints.
+        data.pop('mode_content', None)
+        return data
+
 
 class ChallengeAdminSerializer(ChallengePublicSerializer):
     hints = AdminHintSerializer(many=True, read_only=True)
@@ -166,10 +240,12 @@ class ChallengeAdminSerializer(ChallengePublicSerializer):
     publishAt = serializers.SerializerMethodField()
     created_by = serializers.SerializerMethodField()
     updated_at = serializers.DateTimeField(read_only=True)
+    mode_content = serializers.JSONField(read_only=True)
 
     class Meta(ChallengePublicSerializer.Meta):
         fields = ChallengePublicSerializer.Meta.fields + (
             'publishAt', 'has_flag', 'flag_note', 'created_by', 'updated_at',
+            'mode_content',
         )
 
     def get_flag_note(self, obj):
@@ -181,6 +257,12 @@ class ChallengeAdminSerializer(ChallengePublicSerializer):
 
     def get_created_by(self, obj):
         return obj.created_by.username if obj.created_by else ''
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Admin views may inspect/edit mode-gated content, but never the flag.
+        data['mode_content'] = instance.mode_content or {}
+        return data
 
 
 class ChallengeHintWriteSerializer(serializers.Serializer):
@@ -206,6 +288,27 @@ class ChallengeWriteSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
+    # Stage 1C runtime configuration is admin-only. Public/player serializers
+    # deliberately omit image, command and internal port details.
+    runtime_enabled = serializers.BooleanField(required=False)
+    runtime_image = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    runtime_command = serializers.CharField(required=False, allow_blank=True)
+    runtime_connection_type = serializers.ChoiceField(
+        choices=(('http', 'HTTP'), ('https', 'HTTPS'), ('tcp', 'TCP'), ('other', 'Other')),
+        required=False,
+    )
+    runtime_internal_port = serializers.IntegerField(
+        required=False, allow_null=True, min_value=1, max_value=65535,
+    )
+    runtime_cpu_limit = serializers.FloatField(required=False, min_value=0.05, max_value=8.0)
+    runtime_memory_mb = serializers.IntegerField(required=False, min_value=64, max_value=4096)
+    runtime_pids_limit = serializers.IntegerField(required=False, min_value=16, max_value=1024)
+    runtime_read_only = serializers.BooleanField(required=False)
+    runtime_duration_minutes = serializers.IntegerField(required=False, min_value=0, max_value=1440)
+    runtime_access_mode = serializers.ChoiceField(
+        choices=(('http', 'HTTP'), ('terminal', 'Terminal')),
+        required=False,
+    )
     publishAt = serializers.CharField(
         required=False,
         allow_blank=True,
@@ -224,6 +327,11 @@ class ChallengeWriteSerializer(serializers.ModelSerializer):
         max_length=255,
     )
     hints = ChallengeHintWriteSerializer(many=True, required=False, write_only=True)
+    mode_content = serializers.JSONField(required=False)
+    challenge_mode = serializers.ChoiceField(
+        choices=Challenge.CHALLENGE_MODE_CHOICES,
+        required=False,
+    )
 
     class Meta:
         model = Challenge
@@ -231,8 +339,16 @@ class ChallengeWriteSerializer(serializers.ModelSerializer):
             'title', 'category', 'difficulty', 'points', 'description',
             'scenario', 'objectives', 'instructions', 'author', 'tags',
             'featured', 'trial', 'connectionInfo', 'cheatsheet', 'status',
-            'publishAt', 'flag', 'flag_note', 'hints',
+            'runtime_enabled', 'runtime_image', 'runtime_command',
+            'runtime_connection_type', 'runtime_internal_port',
+            'runtime_cpu_limit', 'runtime_memory_mb', 'runtime_pids_limit',
+            'runtime_read_only', 'runtime_duration_minutes',
+            'runtime_access_mode',
+            'publishAt', 'flag', 'flag_note', 'hints', 'mode_content', 'challenge_mode',
         )
+
+    def validate_mode_content(self, value):
+        return validate_mode_content(value)
 
     def validate(self, attrs):
         flag = attrs.get('flag')
@@ -242,7 +358,34 @@ class ChallengeWriteSerializer(serializers.ModelSerializer):
             )
         if flag and not FLAG_PATTERN.match(flag.strip()):
             raise serializers.ValidationError(
-                {'flag': 'The flag must be of the form CTF{...}.'}
+                {'flag': 'The flag must be of the form CTF{...} or FLAG{...}.'}
+            )
+
+        runtime_enabled = attrs.get(
+            'runtime_enabled',
+            getattr(self.instance, 'runtime_enabled', False),
+        )
+        runtime_image = attrs.get(
+            'runtime_image',
+            getattr(self.instance, 'runtime_image', ''),
+        )
+        runtime_port = attrs.get(
+            'runtime_internal_port',
+            getattr(self.instance, 'runtime_internal_port', None),
+        )
+        runtime_mode = attrs.get(
+            'runtime_access_mode',
+            getattr(self.instance, 'runtime_access_mode', 'http'),
+        )
+        if runtime_enabled and not (runtime_image or '').strip():
+            raise serializers.ValidationError(
+                {'runtime_image': 'A Docker image is required when runtime is enabled.'}
+            )
+        # Terminal-mode containers do not publish a host port. HTTP mode keeps
+        # the exact Stage 1C validation, so existing challenges are unaffected.
+        if runtime_enabled and runtime_mode == 'http' and not runtime_port:
+            raise serializers.ValidationError(
+                {'runtime_internal_port': 'An internal port is required when runtime is enabled.'}
             )
 
         if 'publishAt' in attrs:

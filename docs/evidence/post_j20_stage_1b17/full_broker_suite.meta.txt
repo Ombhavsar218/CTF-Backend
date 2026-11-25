@@ -1,0 +1,5 @@
+COMMAND=E:\Flag-hunt\ctf-platform-be\venv\Scripts\python.exe -m pytest broker/tests -q
+WORKDIR=E:\Flag-hunt\ctf-platform-be
+STARTED=00:06:26.0231186
+DURATION_SECONDS=386.02
+EXIT=0

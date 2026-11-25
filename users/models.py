@@ -136,7 +136,34 @@ class User(AbstractUser):
     # The questionnaire answers (skillLevel, teamInterest, focusAreas, purpose,
     # experienceType, userType). Stored as JSON because the shape is defined by
     # the frontend flow and Dashboard/Challenges read focusAreas from it.
+    # ``onboarding.userType`` may mirror a historical mode choice, but it is not
+    # the authoritative server-side learning mode for protected challenge
+    # content.
     onboarding = models.JSONField(default=dict, blank=True)
+
+    # Server-authoritative learning mode for challenge content gating.
+    # This is intentionally separate from account role/permissions and from the
+    # onboarding payload: it only controls whether the user receives student or
+    # competitor learning content. The default is the least-disclosure option.
+    LEARNING_MODE_STUDENT = 'student'
+    LEARNING_MODE_COMPETITOR = 'competitor'
+    LEARNING_MODE_CHOICES = [
+        (LEARNING_MODE_STUDENT, 'Student'),
+        (LEARNING_MODE_COMPETITOR, 'Competitor'),
+    ]
+    LEARNING_MODE_DEFAULT = LEARNING_MODE_COMPETITOR
+
+    learning_mode = models.CharField(
+        max_length=16,
+        choices=LEARNING_MODE_CHOICES,
+        default=LEARNING_MODE_DEFAULT,
+    )
+
+    # Distinguishes an explicitly user-selected learning mode (via preferences)
+    # from one initialized by onboarding/default. Onboarding resubmission may
+    # initialize learning_mode from a valid userType only while this is False;
+    # explicit preference selections must never be overwritten by onboarding.
+    learning_mode_user_selected = models.BooleanField(default=False)
 
     # Per-user notification preferences (Settings -> Notifications). Stored as
     # JSON so the flag list can grow without a migration; the allowed keys and
@@ -167,3 +194,28 @@ class User(AbstractUser):
         # Group membership deliberately plays no part: `role` and groups are
         # independent, and groups govern Django-side authorization instead.
         return self.role == self.ROLE_ADMIN or self.is_superuser
+
+    @staticmethod
+    def normalize_learning_mode(value):
+        """Return a valid learning mode, or ``None`` for missing/invalid input."""
+        if not isinstance(value, str):
+            return None
+        mode = value.strip().lower()
+        if mode in {
+            User.LEARNING_MODE_STUDENT,
+            User.LEARNING_MODE_COMPETITOR,
+        }:
+            return mode
+        return None
+
+    @property
+    def effective_learning_mode(self):
+        """Persisted learning mode used for protected content gating.
+
+        Invalid persisted values never disclose student-only content: they fall
+        back to the least-disclosure default.
+        """
+        return (
+            self.normalize_learning_mode(getattr(self, 'learning_mode', None))
+            or self.LEARNING_MODE_DEFAULT
+        )

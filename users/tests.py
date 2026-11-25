@@ -274,6 +274,120 @@ class LoginTests(AuthAPITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_successful_login_updates_last_login(self):
+        self.assertIsNone(self.user.last_login)
+        response = self.client.post(
+            self.login_url,
+            {'username': 'om', 'password': VALID_PASSWORD},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertIsNotNone(self.user.last_login)
+
+
+class AuthThrottleTests(AuthAPITestCase):
+    """The public auth endpoints are rate-limited per client IP.
+
+    The test runner clears the process-global cache before every test, so these
+    tests can use the real production rates without depending on test order.
+    """
+
+    def login(self, **extra):
+        return self.client.post(
+            self.login_url,
+            {'username': 'missing-user', 'password': 'wrong-password'},
+            format='json',
+            **extra,
+        )
+
+    def test_login_blocks_after_five_attempts_per_ip(self):
+        for _ in range(5):
+            response = self.login()
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        blocked = self.login()
+        self.assertEqual(blocked.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertIn('detail', blocked.data)
+
+    @override_settings(
+        REST_FRAMEWORK={**settings.REST_FRAMEWORK, 'NUM_PROXIES': 0},
+    )
+    def test_login_throttle_ignores_untrusted_forwarded_for(self):
+        # With NUM_PROXIES=0, a client-supplied header must not create a new
+        # throttle bucket. Rotating it therefore must not bypass the limit.
+        for index in range(5):
+            response = self.login(
+                HTTP_X_FORWARDED_FOR=f'203.0.113.{index + 1}',
+            )
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        blocked = self.login(HTTP_X_FORWARDED_FOR='203.0.113.99')
+        self.assertEqual(blocked.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+    @override_settings(
+        REST_FRAMEWORK={**settings.REST_FRAMEWORK, 'NUM_PROXIES': 1},
+    )
+    def test_login_throttle_uses_trusted_proxy_address(self):
+        # A proxy-controlled rightmost address is the bucket. Changing the
+        # left-hand client-supplied part of the chain must not create a new
+        # bucket once the proxy is explicitly trusted.
+        for index in range(5):
+            response = self.login(
+                HTTP_X_FORWARDED_FOR=f'203.0.113.{index + 1}, 198.51.100.7',
+            )
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        blocked = self.login(
+            HTTP_X_FORWARDED_FOR='203.0.113.99, 198.51.100.7',
+        )
+        self.assertEqual(blocked.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+        other = self.login(
+            HTTP_X_FORWARDED_FOR='203.0.113.99, 198.51.100.8',
+        )
+        self.assertEqual(other.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_authenticated_request_does_not_bypass_login_throttle(self):
+        user = self.User.objects.create_user(
+            username='throttle-user',
+            email='throttle@example.com',
+            password=VALID_PASSWORD,
+        )
+        access = str(AccessToken.for_user(user))
+        headers = {'HTTP_AUTHORIZATION': f'Bearer {access}'}
+
+        for _ in range(5):
+            response = self.login(**headers)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        blocked = self.login(**headers)
+        self.assertEqual(blocked.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+    def test_registration_blocks_after_five_attempts_per_ip(self):
+        for _ in range(5):
+            response = self.client.post(self.register_url, {}, format='json')
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        blocked = self.client.post(self.register_url, {}, format='json')
+        self.assertEqual(blocked.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+    def test_refresh_blocks_after_ten_attempts_per_ip(self):
+        for _ in range(10):
+            response = self.client.post(
+                self.refresh_url,
+                {'refresh': 'not-a-real-token'},
+                format='json',
+            )
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        blocked = self.client.post(
+            self.refresh_url,
+            {'refresh': 'not-a-real-token'},
+            format='json',
+        )
+        self.assertEqual(blocked.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
 
 class MeTests(AuthAPITestCase):
     def setUp(self):
@@ -331,6 +445,27 @@ class RefreshTests(AuthAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('access', response.data)
         AccessToken(response.data['access'])
+
+    def test_refresh_rotates_and_blacklists_the_old_token(self):
+        first = self.client.post(
+            self.refresh_url, {'refresh': self.refresh_token}, format='json',
+        )
+        self.assertEqual(first.status_code, status.HTTP_200_OK, first.content)
+        self.assertIn('refresh', first.data)
+        rotated = first.data['refresh']
+        self.assertNotEqual(rotated, self.refresh_token)
+
+        reused = self.client.post(
+            self.refresh_url, {'refresh': self.refresh_token}, format='json',
+        )
+        self.assertEqual(
+            reused.status_code, status.HTTP_401_UNAUTHORIZED, reused.content,
+        )
+
+        second = self.client.post(
+            self.refresh_url, {'refresh': rotated}, format='json',
+        )
+        self.assertEqual(second.status_code, status.HTTP_200_OK, second.content)
 
     def test_invalid_refresh_token_is_rejected(self):
         response = self.client.post(
@@ -466,11 +601,16 @@ ADMIN_GROUP_PERMS = {
     'auth.view_group', 'auth.add_group', 'auth.change_group', 'auth.delete_group',
     'challenges.view_challenge', 'challenges.add_challenge',
     'challenges.change_challenge', 'challenges.delete_challenge',
+    'challenges.view_category', 'challenges.add_category',
+    'challenges.change_category', 'challenges.delete_category',
     'announcements.view_announcement', 'announcements.add_announcement',
     'announcements.change_announcement', 'announcements.delete_announcement',
     'achievements.view_achievement', 'achievements.add_achievement',
     'achievements.change_achievement', 'achievements.delete_achievement',
     'achievements.view_userachievement',
+    'audit.view_auditlog',
+    'platform_settings.view_platformsettings',
+    'platform_settings.change_platformsettings',
 }
 
 # Permissions a Challenge Creator holds. These are a strict subset of the Admin

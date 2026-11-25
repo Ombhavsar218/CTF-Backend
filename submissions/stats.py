@@ -18,6 +18,12 @@ how much they have earned separately from what is left to spend.
 from the spendable balance, so spending points on a hint can never demote a
 player. See ``progression.py``.
 
+``current_streak`` / ``longest_streak`` are the daily solve streaks derived
+from the stored ``Solve`` rows (see ``calculate_streaks``). A day is a
+calendar day in Django's configured ``TIME_ZONE``; the application stores no
+per-user timezone preference, so one server-side zone defines "a day" for
+everybody.
+
 The function issues a constant number of queries (no per-row/N+1 lookups): a
 handful of aggregates, one query per relation for the recent-activity feed, and
 two grouped queries for the progress chart.
@@ -151,6 +157,99 @@ def category_progress(user):
     return progress
 
 
+def solve_days(user, tz=None):
+    """The set of local calendar dates on which the user solved a challenge.
+
+    Only ``Solve`` rows are read, so a failed submission, a hint unlock or a
+    login can never create a day. The conversion from the stored (UTC) instant
+    to a calendar day happens in Python with Django's timezone utilities, so
+    the result is identical on every database backend and never mixes UTC
+    dates with server-local dates.
+
+    ``tz`` defaults to Django's configured ``TIME_ZONE``; the application has
+    no per-user timezone preference, so one server-side zone defines what
+    "a day" means for everybody.
+    """
+    if tz is None:
+        tz = timezone.get_current_timezone()
+
+    days = set()
+    stamps = (
+        Solve.objects.filter(user=user)
+        .order_by('created_at')
+        .values_list('created_at', flat=True)
+    )
+    for stamp in stamps:
+        if stamp is None:
+            continue
+        if timezone.is_naive(stamp):
+            # Only possible with USE_TZ = False; interpret it in the same zone.
+            stamp = timezone.make_aware(stamp, tz)
+        days.add(timezone.localtime(stamp, tz).date())
+    return days
+
+
+def streaks_from_days(days, today):
+    """Pure streak calculation over a set of local dates.
+
+    ``today`` is the caller's local date. Returns ``(current, longest)``:
+
+    * current - consecutive solve-days ending today, or ending yesterday when
+      the player has not solved anything yet today; ``0`` otherwise;
+    * longest - the longest run of consecutive solve-days anywhere in history,
+      which is still reported when the current streak is ``0``.
+    """
+    if not days:
+        return 0, 0
+
+    # Current streak: today, else yesterday, else nothing.
+    current = 0
+    if today in days:
+        cursor = today
+    elif (today - timedelta(days=1)) in days:
+        cursor = today - timedelta(days=1)
+    else:
+        cursor = None
+    if cursor is not None:
+        while cursor in days:
+            current += 1
+            cursor -= timedelta(days=1)
+
+    # Longest streak: the longest run of consecutive days in the whole history.
+    ordered = sorted(days)
+    longest = 1
+    run = 1
+    for previous, following in zip(ordered, ordered[1:]):
+        if following - previous == timedelta(days=1):
+            run += 1
+        else:
+            longest = max(longest, run)
+            run = 1
+    longest = max(longest, run)
+
+    return current, longest
+
+
+def calculate_streaks(user, now=None, tz=None):
+    """Current and longest daily solve streaks for one user.
+
+    Derived server-side from the stored ``Solve`` records only. A failed
+    submission, a hint reveal, a login or a challenge view never counts.
+
+    The calendar day is defined by Django's configured ``TIME_ZONE`` (the
+    application stores no per-user timezone preference), applied consistently
+    through ``django.utils.timezone``.
+    """
+    if now is None:
+        now = timezone.now()
+    if tz is None:
+        tz = timezone.get_current_timezone()
+
+    today = timezone.localdate(now, tz)
+    current, longest = streaks_from_days(solve_days(user, tz=tz), today)
+    return {'current_streak': current, 'longest_streak': longest}
+
+
 def recent_activity(user, limit=DEFAULT_ACTIVITY_LIMIT):
     """The caller's most recent solves and hint unlocks, newest first."""
     solves = (
@@ -222,6 +321,8 @@ def build_user_statistics(user, *, now=None, activity_limit=DEFAULT_ACTIVITY_LIM
         if submissions_total else 0
     )
 
+    streaks = calculate_streaks(user, now=now)
+
     return {
         'points': user.points,
         'earnedPoints': earned,
@@ -236,4 +337,12 @@ def build_user_statistics(user, *, now=None, activity_limit=DEFAULT_ACTIVITY_LIM
         'recentActivity': recent_activity(user, limit=activity_limit),
         'progress': _progress(user, now),
         'progression': progression_for(earned),
+        # The streak pair is exposed under both spellings: the snake_case
+        # names the API contract uses for these two fields and the camelCase
+        # aliases match the convention of the rest of this payload. They always
+        # carry the same value.
+        'current_streak': streaks['current_streak'],
+        'longest_streak': streaks['longest_streak'],
+        'currentStreak': streaks['current_streak'],
+        'longestStreak': streaks['longest_streak'],
     }

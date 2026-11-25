@@ -47,6 +47,7 @@ class UserSerializer(serializers.ModelSerializer):
             'role',
             'onboardingCompleted',
             'onboarding',
+            'learning_mode',
             'notification_prefs',
             'profile_visibility',
         )
@@ -67,6 +68,9 @@ class UserSerializer(serializers.ModelSerializer):
             **DEFAULT_NOTIFICATION_PREFS,
             **(instance.notification_prefs or {}),
         }
+        # Server-authoritative learning mode for protected challenge content.
+        # Invalid persisted values fall back to the least-disclosure default.
+        data['learning_mode'] = instance.effective_learning_mode
         return data
 
 
@@ -161,7 +165,7 @@ class PreferencesSerializer(serializers.ModelSerializer):
     """
     Partial update of the caller's own account preferences.
 
-    Exposes only the two preference fields, so a crafted payload cannot reach
+    Exposes only account-preference fields, so a crafted payload cannot reach
     ``role``, ``points``, ``email`` or any other column. Always bound to
     ``request.user`` by the view, so one user can never write another's
     preferences.
@@ -170,14 +174,21 @@ class PreferencesSerializer(serializers.ModelSerializer):
     values; unknown keys and non-boolean values are rejected rather than
     silently dropped. A partial update is merged over the stored dict (and the
     canonical defaults), so sending one flag never clears the others.
+
+    ``learning_mode`` controls only protected challenge content presentation;
+    it never changes account role, permissions, groups, or staff/superuser
+    status.
     """
+
+    learning_mode = serializers.CharField(required=False, allow_blank=False)
 
     class Meta:
         model = User
-        fields = ('notification_prefs', 'profile_visibility')
+        fields = ('notification_prefs', 'profile_visibility', 'learning_mode')
         extra_kwargs = {
             'notification_prefs': {'required': False},
             'profile_visibility': {'required': False},
+            'learning_mode': {'required': False},
         }
 
     def validate_notification_prefs(self, value):
@@ -199,6 +210,14 @@ class PreferencesSerializer(serializers.ModelSerializer):
                 )
         return value
 
+    def validate_learning_mode(self, value):
+        mode = User.normalize_learning_mode(value)
+        if mode is None:
+            raise serializers.ValidationError(
+                'Learning mode must be either "student" or "competitor".'
+            )
+        return mode
+
     def update(self, instance, validated_data):
         prefs = validated_data.pop('notification_prefs', None)
         if prefs is not None:
@@ -207,7 +226,13 @@ class PreferencesSerializer(serializers.ModelSerializer):
                 **(instance.notification_prefs or {}),
                 **prefs,
             }
+        # An explicit learning-mode update through preferences marks the mode as
+        # user-selected so onboarding resubmission cannot overwrite it.
+        if 'learning_mode' in validated_data:
+            instance.learning_mode_user_selected = True
         for attr, value in validated_data.items():
+            # Learning mode is a presentation/content preference only. It must
+            # never affect role/permissions or other account state.
             setattr(instance, attr, value)
         instance.save()
         return instance

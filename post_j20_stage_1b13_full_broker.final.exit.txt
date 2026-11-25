@@ -1,0 +1,3 @@
+﻿COMMAND: & 'E:\Flag-hunt\ctf-platform-be\venv\Scripts\pytest.exe' broker/tests -q
+---EXIT:0---
+SECONDS:353.6547324

@@ -1,0 +1,395 @@
+FF.FFFFFFFFFFFFFFF.FFF.FF.F                                              [100%]
+================================== FAILURES ===================================
+___ test_r16_01_trusted_mock_peer_identity_cannot_be_overridden_by_headers ____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001EF23181FC0>
+
+    def test_r16_01_trusted_mock_peer_identity_cannot_be_overridden_by_headers(monkeypatch):
+        recorder = _RecordingAuthorizer()
+        monkeypatch.setattr(broker_auth, "authorizer", recorder)
+        request = _FakeRequest(peer={"uid": 1000, "gid": 1000, "user": "flaghunt-mgr", "source": "mock-transport"})
+        asyncio.run(broker_auth.require_broker_auth(request, "9999", "9999", "attacker", None))
+>       assert recorder.seen_peer["uid"] == 1000
+E       assert 9999 == 1000
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:155: AssertionError
+_______ test_r16_01_conflicting_headers_do_not_change_trusted_identity ________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001EF2330BC10>
+
+    def test_r16_01_conflicting_headers_do_not_change_trusted_identity(monkeypatch):
+        recorder = _RecordingAuthorizer()
+        monkeypatch.setattr(broker_auth, "authorizer", recorder)
+        trusted = {"uid": 1000, "gid": 1000, "user": "flaghunt-mgr"}
+        for uid, gid, user in (("9999", None, None), (None, "9999", None), (None, None, "evil")):
+            request = _FakeRequest(peer=dict(trusted))
+            asyncio.run(broker_auth.require_broker_auth(request, uid, gid, user, None))
+>           assert recorder.seen_peer == trusted
+E           AssertionError: assert {'gid': 1000,...flaghunt-mgr'} == {'gid': 1000,...flaghunt-mgr'}
+E             
+E             Omitting 2 identical items, use -vv to show
+E             Differing items:
+E             {'uid': 9999} != {'uid': 1000}
+E             Use -v to get more diff
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:169: AssertionError
+_ test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection[trusted] _
+
+flag = 'trusted'
+
+    @pytest.mark.parametrize("flag", ["trusted", "verified", "caller_trusted", "auth_identity", "x_identity", "source_identity"])
+    def test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection(flag):
+        provider = StrictAuthorizationProvider(allowed_uids={1000}, allowed_gids={1000})
+        req = {"peer_uid": 1000, "peer_gid": 1000, flag: True, "controller_verified": True}
+>       with pytest.raises(FirewallControllerAuthError):
+E       Failed: DID NOT RAISE <class 'broker.firewall_controller_service.errors.FirewallControllerAuthError'>
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:183: Failed
+_ test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection[verified] _
+
+flag = 'verified'
+
+    @pytest.mark.parametrize("flag", ["trusted", "verified", "caller_trusted", "auth_identity", "x_identity", "source_identity"])
+    def test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection(flag):
+        provider = StrictAuthorizationProvider(allowed_uids={1000}, allowed_gids={1000})
+        req = {"peer_uid": 1000, "peer_gid": 1000, flag: True, "controller_verified": True}
+>       with pytest.raises(FirewallControllerAuthError):
+E       Failed: DID NOT RAISE <class 'broker.firewall_controller_service.errors.FirewallControllerAuthError'>
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:183: Failed
+_ test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection[caller_trusted] _
+
+flag = 'caller_trusted'
+
+    @pytest.mark.parametrize("flag", ["trusted", "verified", "caller_trusted", "auth_identity", "x_identity", "source_identity"])
+    def test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection(flag):
+        provider = StrictAuthorizationProvider(allowed_uids={1000}, allowed_gids={1000})
+        req = {"peer_uid": 1000, "peer_gid": 1000, flag: True, "controller_verified": True}
+>       with pytest.raises(FirewallControllerAuthError):
+E       Failed: DID NOT RAISE <class 'broker.firewall_controller_service.errors.FirewallControllerAuthError'>
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:183: Failed
+_ test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection[auth_identity] _
+
+flag = 'auth_identity'
+
+    @pytest.mark.parametrize("flag", ["trusted", "verified", "caller_trusted", "auth_identity", "x_identity", "source_identity"])
+    def test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection(flag):
+        provider = StrictAuthorizationProvider(allowed_uids={1000}, allowed_gids={1000})
+        req = {"peer_uid": 1000, "peer_gid": 1000, flag: True, "controller_verified": True}
+>       with pytest.raises(FirewallControllerAuthError):
+E       Failed: DID NOT RAISE <class 'broker.firewall_controller_service.errors.FirewallControllerAuthError'>
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:183: Failed
+_ test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection[x_identity] _
+
+flag = 'x_identity'
+
+    @pytest.mark.parametrize("flag", ["trusted", "verified", "caller_trusted", "auth_identity", "x_identity", "source_identity"])
+    def test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection(flag):
+        provider = StrictAuthorizationProvider(allowed_uids={1000}, allowed_gids={1000})
+        req = {"peer_uid": 1000, "peer_gid": 1000, flag: True, "controller_verified": True}
+>       with pytest.raises(FirewallControllerAuthError):
+E       Failed: DID NOT RAISE <class 'broker.firewall_controller_service.errors.FirewallControllerAuthError'>
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:183: Failed
+_ test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection[source_identity] _
+
+flag = 'source_identity'
+
+    @pytest.mark.parametrize("flag", ["trusted", "verified", "caller_trusted", "auth_identity", "x_identity", "source_identity"])
+    def test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection(flag):
+        provider = StrictAuthorizationProvider(allowed_uids={1000}, allowed_gids={1000})
+        req = {"peer_uid": 1000, "peer_gid": 1000, flag: True, "controller_verified": True}
+>       with pytest.raises(FirewallControllerAuthError):
+E       Failed: DID NOT RAISE <class 'broker.firewall_controller_service.errors.FirewallControllerAuthError'>
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:183: Failed
+_ test_r16_05_service_rejects_caller_trust_flag_without_ownership_side_effect _
+
+    def test_r16_05_service_rejects_caller_trust_flag_without_ownership_side_effect():
+        store = _store()
+        svc = _svc(store)
+        req = _install_req(pid="p-b17-trust")
+        req["trusted"] = True
+        req["controller_verified"] = True
+>       with pytest.raises(FirewallControllerAuthError):
+E       Failed: DID NOT RAISE <class 'broker.firewall_controller_service.errors.FirewallControllerAuthError'>
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:193: Failed
+_____ test_r16_05_mock_authorizer_also_rejects_controller_verified_alias ______
+
+    def test_r16_05_mock_authorizer_also_rejects_controller_verified_alias():
+        provider = MockAuthorizationProvider()
+>       with pytest.raises(FirewallControllerAuthError):
+E       Failed: DID NOT RAISE <class 'broker.firewall_controller_service.errors.FirewallControllerAuthError'>
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:200: Failed
+________ test_r16_02_verified_promotion_persists_reconciliation_status ________
+
+    def test_r16_02_verified_promotion_persists_reconciliation_status():
+        store = _store()
+        svc = _svc(store)
+        pid = "b17-prom-active"
+        digest = _installed(store, svc, pid)
+        rec = store.get_by_policy(pid, 1)
+        _evidence_for(store, rec["ownership_record_id"], pid, digest)
+        _sql(store, "UPDATE controller_ownership SET installation_state='VERIFIED' WHERE policy_id=? AND policy_version=?", (pid, 1))
+        res = svc.reconcile_pending_operations(_op_req(pid, digest))
+        assert any(r.get("action") == "promoted_to_active" for r in res["result"]["reconciled"])
+        assert _state(store, pid) == "ACTIVE"
+>       assert store.get_by_policy(pid, 1).get("reconciliation_status") == "ok"
+E       AssertionError: assert 'pending' == 'ok'
+E         
+E         - ok
+E         + pending
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:217: AssertionError
+_______ test_r16_02_revoke_confirmation_persists_reconciliation_status ________
+
+    def test_r16_02_revoke_confirmation_persists_reconciliation_status():
+        store = _store()
+        backend = _BackendWithState(_CountingBackend(authorized_backend()), "revoked")
+        svc = _svc(store, backend)
+        pid = "b17-prom-revoke"
+        digest = _installed(store, svc, pid)
+        _sql(store, "UPDATE controller_ownership SET installation_state='REVOKING' WHERE policy_id=? AND policy_version=?", (pid, 1))
+        res = svc.reconcile_pending_operations(_op_req(pid, digest))
+        assert any(r.get("action") == "revoke_confirmed" for r in res["result"]["reconciled"])
+        assert _state(store, pid) == "REVOKED"
+>       assert store.get_by_policy(pid, 1).get("reconciliation_status") == "ok"
+E       AssertionError: assert 'pending' == 'ok'
+E         
+E         - ok
+E         + pending
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:230: AssertionError
+________ test_r16_02_verifying_recovery_persists_reconciliation_status ________
+
+    def test_r16_02_verifying_recovery_persists_reconciliation_status():
+        store = _store()
+        svc = _svc(store)
+        pid = "b17-prom-verifying"
+>       digest, _oid = _verifying_with_evidence(store, svc, pid)
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:237: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+store = <broker.firewall_controller_service.ownership_store.ControllerOwnershipStore object at 0x000001EF2330A170>
+svc = <broker.firewall_controller_service.controller_service.FirewallControllerService object at 0x000001EF2330AF20>
+pid = 'b17-prom-verifying'
+
+    def _verifying_with_evidence(store, svc, pid):
+        """Install, persist verification evidence, then simulate the VERIFYING crash point."""
+        digest = _installed(store, svc, pid)
+        rec = store.get_by_policy(pid, 1)
+        oid = rec['ownership_record_id']
+        store.raise_after_evidence = True
+>       with pytest.raises(BrokerDBError):
+E       Failed: DID NOT RAISE <class 'broker.app.db.BrokerDBError'>
+
+broker\tests\test_post_j20_stage_1b3_durable_crash_recovery.py:281: Failed
+____________ test_r16_02_status_persistence_failure_is_fail_closed ____________
+
+    def test_r16_02_status_persistence_failure_is_fail_closed():
+        store = _FailingStatusStore(db_path=_db_path())
+        svc = _svc(store)
+        pid = "b17-status-fail"
+        digest = _installed(store, svc, pid)
+        rec = store.get_by_policy(pid, 1)
+        _evidence_for(store, rec["ownership_record_id"], pid, digest)
+        _sql(store, "UPDATE controller_ownership SET installation_state='VERIFIED' WHERE policy_id=? AND policy_version=?", (pid, 1))
+        res = svc.reconcile_pending_operations(_op_req(pid, digest))
+>       assert res["status"] == "error"
+E       AssertionError: assert 'ok' == 'error'
+E         
+E         - error
+E         + ok
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:253: AssertionError
+_________ test_r16_02_status_cas_conflict_is_uncertain_not_reconciled _________
+
+    def test_r16_02_status_cas_conflict_is_uncertain_not_reconciled():
+        store = _VersionBumpingStatusStore(db_path=_db_path())
+        svc = _svc(store)
+        pid = "b17-status-cas"
+        digest = _installed(store, svc, pid)
+        rec = store.get_by_policy(pid, 1)
+        _evidence_for(store, rec["ownership_record_id"], pid, digest)
+        _sql(store, "UPDATE controller_ownership SET installation_state='VERIFIED' WHERE policy_id=? AND policy_version=?", (pid, 1))
+        res = svc.reconcile_pending_operations(_op_req(pid, digest))
+        assert res["status"] == "ok"
+>       assert not res["result"]["reconciled"]
+E       AssertionError: assert not [{'action': 'promoted_to_active', 'policy_id': 'b17-status-cas'}]
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:268: AssertionError
+________ test_r16_03_unsupported_heuristic_ownership_claim_is_rejected ________
+
+    def test_r16_03_unsupported_heuristic_ownership_claim_is_rejected():
+        req = _install_req(pid="b17-cidr-reject")
+        claim = {
+            "ownership_record_id": "o-b17", "policy_id": "b17-cidr-reject", "policy_version": 1,
+            "instance_id": "i1", "network_id": "n1", "network_cidr": "10.0.0.0/16",
+        }
+>       with pytest.raises(RuleSchemaError) as exc:
+E       Failed: DID NOT RAISE <class 'broker.firewall_controller_service.rule_schema_v1.RuleSchemaError'>
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:280: Failed
+_________ test_r16_03_explicit_owned_cidrs_are_enforced_when_supplied _________
+
+    def test_r16_03_explicit_owned_cidrs_are_enforced_when_supplied():
+        in_scope = _install_req(pid="b17-cidr-ok")
+        scope = {
+            "ownership_record_id": "o-b17", "policy_id": "b17-cidr-ok", "policy_version": 1,
+            "instance_id": "i1", "network_id": "n1",
+            "owned_network_cidrs": ["10.0.0.0/16", "10.0.1.0/24"],
+        }
+        assert validate_install_policy_rules(in_scope, ownership_rec=scope) is not None
+        out_scope = _install_req(pid="b17-cidr-out", rules=[_rule(source_cidr="10.99.0.0/24")])
+        out_scope["compiled_rule_digest"] = compiled_rule_digest(
+            validate_and_normalize_rules(out_scope["rules"], ["ipv4"])
+        )
+>       with pytest.raises(RuleSchemaError) as exc:
+E       Failed: DID NOT RAISE <class 'broker.firewall_controller_service.rule_schema_v1.RuleSchemaError'>
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:297: Failed
+_____ test_r16_06_pending_ledger_filter_does_not_match_overlapping_prefix _____
+
+    def test_r16_06_pending_ledger_filter_does_not_match_overlapping_prefix():
+        store = _store()
+        svc = _svc(store)
+        digest = _installed(store, svc, "p1")
+        store.create_idempotency_record("b17-ledger-p1", "install_policy", "a" * 64,
+                                        resource_key="p1:1", ownership_record_id="o1",
+                                        lifecycle_state="INSTALLING")
+        store.create_idempotency_record("b17-ledger-p10", "install_policy", "b" * 64,
+                                        resource_key="p10:1", ownership_record_id="o10",
+                                        lifecycle_state="INSTALLING")
+        res = svc.reconcile_pending_operations(_op_req("p1", digest))
+        keys = {e.get("idempotency_key") for e in res["result"]["uncertain"]}
+        assert "b17-ledger-p1" in keys
+>       assert "b17-ledger-p10" not in keys
+E       AssertionError: assert 'b17-ledger-p10' not in {'b17-ledger-p1', 'b17-ledger-p10'}
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:321: AssertionError
+_________ test_r16_06_full_scan_keeps_overlapping_identities_distinct _________
+
+    def test_r16_06_full_scan_keeps_overlapping_identities_distinct():
+        store = _store()
+        svc = _svc(store)
+        for pid in ("p1", "p10"):
+            _installed(store, svc, pid)
+        store.create_idempotency_record("b17-full-p10", "install_policy", "c" * 64,
+                                        resource_key="p10:1", ownership_record_id="o10",
+                                        lifecycle_state="INSTALLING")
+>       res = svc.reconcile_pending_operations({**_op_req("unused", "a" * 64), "policy_id": None})
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+broker\firewall_controller_service\controller_service.py:1721: in reconcile_pending_operations
+    self.validator.validate(req)
+broker\firewall_controller_service\request_validator.py:9: in validate
+    return _validate_request(req)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+req = {'compiled_rule_digest': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'idempotency_key': '953e11f4-cbb7-40ce-b9fb-65de796eef45', 'instance_id': 'i1', 'network_id': 'n1', ...}
+
+    def _validate_request(req: Dict[str, Any]) -> ControllerRequest:
+        required = ['request_id', 'operation_id', 'idempotency_key', 'policy_id', 'policy_version', 'compiled_rule_digest']
+        for r in required:
+            if r not in req or req[r] is None or req[r] == '':
+>               raise FirewallControllerRequestError(f"Missing {r}")
+E               broker.app.firewall_controller_contract.FirewallControllerRequestError: Missing policy_id
+
+broker\app\firewall_controller_contract.py:56: FirewallControllerRequestError
+______ test_r16_04_compiled_rule_digest_is_not_a_canonical_policy_digest ______
+
+    def test_r16_04_compiled_rule_digest_is_not_a_canonical_policy_digest():
+        rules = [_rule()]
+        norm = validate_and_normalize_rules(rules, ["ipv4"])
+        req = _install_req(pid="b17-digest-alias")
+        req["canonical_policy_digest"] = compiled_rule_digest(norm)
+>       with pytest.raises(RuleSchemaError) as exc:
+E       Failed: DID NOT RAISE <class 'broker.firewall_controller_service.rule_schema_v1.RuleSchemaError'>
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:345: Failed
+______ test_r16_09_nonempty_compiled_representation_is_always_validated _______
+
+    def test_r16_09_nonempty_compiled_representation_is_always_validated():
+        req = _install_req(pid="b17-mirror-repr", compiled={"unexpected_representation": True})
+>       with pytest.raises(RuleSchemaError):
+E       Failed: DID NOT RAISE <class 'broker.firewall_controller_service.rule_schema_v1.RuleSchemaError'>
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:379: Failed
+____ test_r16_09_nested_legacy_markers_are_detected_beyond_old_depth_bound ____
+
+    def test_r16_09_nested_legacy_markers_are_detected_beyond_old_depth_bound():
+        marker = {"targets": []}
+        nested = marker
+        for _ in range(9):
+            nested = {"nested": nested}
+        req = _install_req(pid="b17-mirror-deep", compiled=nested)
+>       with pytest.raises(RuleSchemaError) as exc:
+E       Failed: DID NOT RAISE <class 'broker.firewall_controller_service.rule_schema_v1.RuleSchemaError'>
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:389: Failed
+_________ test_r16_07_internal_helper_exception_text_is_not_returned __________
+
+    def test_r16_07_internal_helper_exception_text_is_not_returned():
+        executor = MockHelperExecutor(
+            auth=MockHelperAuthorizationProvider(
+                allowed_uids={1000}, allowed_gids={1000}, allowed_operations=set(HelperOperation)
+            ),
+            state_controller=_ExplodingStateController(),
+        )
+        req = {
+            "schema_version": SCHEMA_VERSION,
+            "request_id": str(uuid.uuid4()), "operation_id": str(uuid.uuid4()),
+            "idempotency_key": str(uuid.uuid4()),
+            "policy_id": "b17-error", "policy_version": 1,
+            "compiled_rule_digest": "a" * 64,
+            "ownership_reference": "o-b17", "instance_id": "i1", "network_id": "n1",
+            "address_family": "ipv4", "timeout_ms": 5000,
+        }
+        identity = MockHelperPeerIdentity(uid=1000, gid=1000, source="b17-test")
+        resp = executor.execute(HelperOperation.INSTALL_POLICY, req, identity=identity)
+        assert resp["status"] == "error"
+        assert resp["error_code"] == "EXECUTION_ERROR"
+>       assert SENTINEL_ERROR_1B17 not in resp.get("error_message", "")
+E       AssertionError: assert 'SENTINEL_1B..._DO_NOT_LEAK' not in 'SENTINEL_1B..._DO_NOT_LEAK'
+E         
+E         'SENTINEL_1B17_RAW_..._DETAIL_DO_NOT_LEAK' is contained here:
+E           SENTINEL_1B17_RAW_INTERNAL_DETAIL_DO_NOT_LEAK
+
+broker\tests\test_post_j20_stage_1b17_remediation.py:425: AssertionError
+============================== warnings summary ===============================
+venv\lib\site-packages\pydantic\_internal\_config.py:291
+  E:\Flag-hunt\ctf-platform-be\venv\lib\site-packages\pydantic\_internal\_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_01_trusted_mock_peer_identity_cannot_be_overridden_by_headers
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_01_conflicting_headers_do_not_change_trusted_identity
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection[trusted]
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection[verified]
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection[caller_trusted]
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection[auth_identity]
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection[x_identity]
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_05_caller_controller_verified_cannot_suppress_strict_rejection[source_identity]
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_05_service_rejects_caller_trust_flag_without_ownership_side_effect
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_05_mock_authorizer_also_rejects_controller_verified_alias
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_02_verified_promotion_persists_reconciliation_status
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_02_revoke_confirmation_persists_reconciliation_status
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_02_verifying_recovery_persists_reconciliation_status
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_02_status_persistence_failure_is_fail_closed
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_02_status_cas_conflict_is_uncertain_not_reconciled
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_03_unsupported_heuristic_ownership_claim_is_rejected
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_03_explicit_owned_cidrs_are_enforced_when_supplied
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_06_pending_ledger_filter_does_not_match_overlapping_prefix
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_06_full_scan_keeps_overlapping_identities_distinct
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_04_compiled_rule_digest_is_not_a_canonical_policy_digest
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_09_nonempty_compiled_representation_is_always_validated
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_09_nested_legacy_markers_are_detected_beyond_old_depth_bound
+FAILED broker/tests/test_post_j20_stage_1b17_remediation.py::test_r16_07_internal_helper_exception_text_is_not_returned
+23 failed, 4 passed, 1 warning in 4.48s

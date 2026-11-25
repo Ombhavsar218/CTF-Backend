@@ -49,8 +49,9 @@ def unique_slug(model, value, instance_pk=None, queryset=None):
 class Category(models.Model):
     """A challenge category (Web Exploitation, Cryptography, ...).
 
-    Seeded from the frontend's existing category definitions; the API only
-    lists categories (no create/update/delete at this stage).
+    Seeded from the frontend's existing category definitions. Public reads are
+    open; administrators create/update/delete through the admin API. Deletion is
+    blocked while any challenge or achievement rule still references the row.
     """
 
     name = models.CharField(max_length=100, unique=True)
@@ -136,12 +137,64 @@ class Challenge(models.Model):
     # seeded / adjusted administratively rather than derived.
     solves = models.PositiveIntegerField(default=0)
 
-    # Connection details for a live challenge instance (out of scope to run;
-    # only the descriptive {url, port} is stored and shown to players).
+    # Descriptive connection details shown to players on static challenges.
+    # Real instance connection details are returned per instance instead.
     connection_info = models.JSONField(null=True, blank=True)
+
+    # Stage 1C: optional local Docker runtime configuration. A challenge is
+    # only startable when runtime_enabled, runtime_image and (for published
+    # ports) runtime_internal_port are configured by an administrator.
+    runtime_enabled = models.BooleanField(default=False)
+    runtime_image = models.CharField(max_length=255, blank=True, default='')
+    runtime_command = models.TextField(blank=True, default='')
+    runtime_connection_type = models.CharField(
+        max_length=8,
+        choices=(
+            ('http', 'HTTP'),
+            ('https', 'HTTPS'),
+            ('tcp', 'TCP'),
+            ('other', 'Other'),
+        ),
+        default='http',
+    )
+    runtime_internal_port = models.PositiveIntegerField(null=True, blank=True)
+    runtime_cpu_limit = models.FloatField(default=0.5)
+    runtime_memory_mb = models.PositiveIntegerField(default=256)
+    runtime_pids_limit = models.PositiveIntegerField(default=64)
+    runtime_read_only = models.BooleanField(default=True)
+    runtime_duration_minutes = models.PositiveIntegerField(default=0)
+    # Stage 1D: access mode. Existing challenges keep the Stage 1C HTTP flow.
+    runtime_access_mode = models.CharField(
+        max_length=10,
+        choices=(('http', 'HTTP'), ('terminal', 'Terminal')),
+        default='http',
+    )
 
     # The public "cheatsheet" tab: a list of {command, description, category}.
     cheatsheet = models.JSONField(default=list, blank=True)
+
+    # Optional, mode-gated challenge content (student/competitor/solution).
+    # This is never returned through ordinary public challenge serializers.
+    # Existing challenges default to an empty object for backwards
+    # compatibility.
+    mode_content = models.JSONField(default=dict, blank=True)
+
+    # Which learning mode this challenge is intended for. 'both' keeps the
+    # challenge visible to student and competitor users (backward-compatible
+    # default for existing challenges).
+    MODE_STUDENT = 'student'
+    MODE_COMPETITOR = 'competitor'
+    MODE_BOTH = 'both'
+    CHALLENGE_MODE_CHOICES = [
+        (MODE_STUDENT, 'Student'),
+        (MODE_COMPETITOR, 'Competitor'),
+        (MODE_BOTH, 'Both'),
+    ]
+    challenge_mode = models.CharField(
+        max_length=16,
+        choices=CHALLENGE_MODE_CHOICES,
+        default=MODE_BOTH,
+    )
 
     status = models.CharField(
         max_length=12,
@@ -182,6 +235,12 @@ class Challenge(models.Model):
         """
         stored = getattr(self, 'flag', None)
         return bool(stored) and stored.verify(raw)
+
+    @property
+    def has_mode_content(self):
+        """True when the challenge carries non-empty mode-gated content."""
+        content = self.mode_content
+        return isinstance(content, dict) and bool(content)
 
 
 class ChallengeFlag(models.Model):

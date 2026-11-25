@@ -1,0 +1,3 @@
+﻿COMMAND: pytest ...new_suite -q
+---EXIT:0---
+SECONDS:12.4292331

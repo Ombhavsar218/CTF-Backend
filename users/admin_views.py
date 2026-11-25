@@ -9,6 +9,7 @@ grants nothing.
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -17,6 +18,12 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from audit.services import (
+    AuditAction,
+    changed_fields,
+    log_admin_action,
+)
 
 from .admin_serializers import (
     AdminGroupSerializer,
@@ -88,6 +95,18 @@ class AdminUserListCreateView(generics.ListCreateAPIView):
             return AdminUserCreateSerializer
         return AdminUserSerializer
 
+    @transaction.atomic
+    def perform_create(self, serializer):
+        user = serializer.save()
+        log_admin_action(
+            actor=self.request.user,
+            action=AuditAction.USER_CREATE,
+            target_type='user',
+            target_id=user.pk,
+            target_label=user.username,
+            metadata={'fields': changed_fields(serializer.validated_data)},
+        )
+
 
 class AdminUserDetailView(generics.RetrieveUpdateDestroyAPIView):
     """GET/PATCH/DELETE /admin/users/{id}/."""
@@ -121,6 +140,20 @@ class AdminUserDetailView(generics.RetrieveUpdateDestroyAPIView):
         self._guard_superuser(request, self.get_object())
         return super().update(request, *args, **kwargs)
 
+    @transaction.atomic
+    def perform_update(self, serializer):
+        target = serializer.instance
+        fields = changed_fields(serializer.validated_data)
+        serializer.save()
+        log_admin_action(
+            actor=self.request.user,
+            action=AuditAction.USER_UPDATE,
+            target_type='user',
+            target_id=target.pk,
+            target_label=target.username,
+            metadata={'fields': fields},
+        )
+
     def destroy(self, request, *args, **kwargs):
         target = self.get_object()
         if target.pk == request.user.pk:
@@ -136,6 +169,19 @@ class AdminUserDetailView(generics.RetrieveUpdateDestroyAPIView):
                 {'detail': 'You cannot delete the last superuser.'}
             )
         return super().destroy(request, *args, **kwargs)
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        target_id = instance.pk
+        target_label = instance.username
+        instance.delete()
+        log_admin_action(
+            actor=self.request.user,
+            action=AuditAction.USER_DELETE,
+            target_type='user',
+            target_id=target_id,
+            target_label=target_label,
+        )
 
 
 class AdminUserStatusView(APIView):
@@ -173,10 +219,23 @@ class AdminUserStatusView(APIView):
                     {'detail': 'You cannot deactivate the last superuser.'}
                 )
 
-        target.status = new_status
-        target.status_note = note
-        target.is_active = new_status == User.STATUS_ACTIVE
-        target.save(update_fields=['status', 'status_note', 'is_active'])
+        old_status = target.status
+        with transaction.atomic():
+            target.status = new_status
+            target.status_note = note
+            target.is_active = new_status == User.STATUS_ACTIVE
+            target.save(update_fields=['status', 'status_note', 'is_active'])
+            log_admin_action(
+                actor=request.user,
+                action=AuditAction.USER_STATUS_CHANGE,
+                target_type='user',
+                target_id=target.pk,
+                target_label=target.username,
+                metadata={
+                    'old_status': old_status,
+                    'new_status': new_status,
+                },
+            )
         return Response(AdminUserSerializer(target).data)
 
 
@@ -214,7 +273,21 @@ class AdminUserGroupsView(APIView):
                     }
                 )
 
-        target.groups.set(new_groups)
+        old_group_names = set(target.groups.values_list('name', flat=True))
+        new_group_names = {group.name for group in new_groups}
+        with transaction.atomic():
+            target.groups.set(new_groups)
+            log_admin_action(
+                actor=request.user,
+                action=AuditAction.USER_GROUPS_CHANGE,
+                target_type='user',
+                target_id=target.pk,
+                target_label=target.username,
+                metadata={
+                    'added_groups': sorted(new_group_names - old_group_names),
+                    'removed_groups': sorted(old_group_names - new_group_names),
+                },
+            )
         return Response(AdminUserSerializer(target).data)
 
 
@@ -248,11 +321,21 @@ class AdminUserRestoreView(APIView):
 
         # Full restore to a usable state, keeping the is_active <-> status
         # lockstep that the status endpoint maintains.
-        target.deleted_at = None
-        target.is_active = True
-        target.status = User.STATUS_ACTIVE
-        target.status_note = ''
-        target.save(
-            update_fields=['deleted_at', 'is_active', 'status', 'status_note']
-        )
+        with transaction.atomic():
+            target.deleted_at = None
+            target.is_active = True
+            target.status = User.STATUS_ACTIVE
+            target.status_note = ''
+            target.save(
+                update_fields=[
+                    'deleted_at', 'is_active', 'status', 'status_note',
+                ]
+            )
+            log_admin_action(
+                actor=request.user,
+                action=AuditAction.USER_RESTORE,
+                target_type='user',
+                target_id=target.pk,
+                target_label=target.username,
+            )
         return Response(AdminUserSerializer(target).data)

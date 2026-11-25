@@ -1,0 +1,24 @@
+Post-J.20 Stage 1B.6 — initial new-suite failure chronology (superseded; not a final result)
+
+Command: venv\Scripts\python.exe -m pytest broker/tests/test_post_j20_stage_1b6_targeted_residual_gaps.py -q
+Initial actual result: 3 failed, 11 passed, 1 warning in 9.83s; EXIT=1.
+
+Failures investigated and corrected before the final green run:
+1. test_corrupt_canonical_body_fails_closed_in_reconciliation
+   UnboundLocalError: local variable 'inspect_req' referenced before assignment at
+   controller_service.py:1667. Cause: the canonical-body fail-closed branch used
+   inspect_req before its block was constructed. Fix: operation/policy inspection
+   request construction moved before the canonical-body validation branch.
+2. test_repeated_reconciliation_is_stable_and_operation_bound
+   AssertionError comparing caller request ids to audit request ids. Cause: the test
+   incorrectly assumed the service would persist the caller's request id; reconciliation
+   uses its own generated operation/request identity. Fix: assert distinct generated
+   request ids, fixed policy id and fixed ownership id in audit rows.
+3. test_every_reconciliation_status_write_is_version_guarded
+   PermissionError('LIFECYCLE_VERSION_CONFLICT') in the test helper while rewinding
+   ACTIVE -> REQUESTED. Cause: the test used the wrong previous state after a plain
+   install. Fix: read the actual current installation_state before rewinding.
+
+Final captured result is in post_j20_stage_1b6_new_suite.stdout.txt / .stderr.txt /
+.exit.txt: 14 passed, 1 warning in 4.23s; EXIT=0. No assertion was weakened; the
+three failures were test/contract mistakes corrected before final verification.

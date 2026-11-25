@@ -5,6 +5,8 @@ from .views import (
     HintRevealView,
     LeaderboardMeView,
     LeaderboardView,
+    PersonalSolveHistoryView,
+    PersonalSubmissionHistoryView,
     UserStatsView,
 )
 
@@ -24,4 +26,14 @@ urlpatterns = [
     path('leaderboard/', LeaderboardView.as_view(), name='leaderboard'),
     path('leaderboard/me/', LeaderboardMeView.as_view(), name='leaderboard-me'),
     path('stats/me/', UserStatsView.as_view(), name='user-stats'),
+    path(
+        'submissions/me/',
+        PersonalSubmissionHistoryView.as_view(),
+        name='submission-history',
+    ),
+    path(
+        'solves/me/',
+        PersonalSolveHistoryView.as_view(),
+        name='solve-history',
+    ),
 ]

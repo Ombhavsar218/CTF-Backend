@@ -1,16 +1,26 @@
 """
 ASGI config for config project.
 
-It exposes the ASGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/5.2/howto/deployment/asgi/
+HTTP traffic keeps using the standard Django application. The WebSocket
+namespace is reserved for the Stage 1D authenticated terminal gateway; no
+terminal execution is exposed yet.
 """
 
 import os
 
-from django.core.asgi import get_asgi_application
+import django
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
 
-application = get_asgi_application()
+from channels.routing import ProtocolTypeRouter, URLRouter  # noqa: E402
+from django.core.asgi import get_asgi_application  # noqa: E402
+
+from terminal.routing import websocket_urlpatterns  # noqa: E402
+
+django_asgi_application = get_asgi_application()
+
+application = ProtocolTypeRouter({
+    'http': django_asgi_application,
+    'websocket': URLRouter(websocket_urlpatterns),
+})

@@ -86,6 +86,34 @@ class CategoryProgressSerializer(serializers.Serializer):
     points = serializers.IntegerField()
 
 
+class SubmissionHistorySerializer(serializers.Serializer):
+    """One of the caller's own flag attempts.
+
+    The submitted flag is not stored by ``Submission`` and is not part of this
+    shape. ``challenge`` details are read-only snapshots of the related row.
+    """
+
+    id = serializers.IntegerField()
+    challengeId = serializers.IntegerField(source='challenge_id')
+    challengeTitle = serializers.CharField(source='challenge.title')
+    challengeCategory = serializers.CharField(source='challenge.category.name')
+    challengeDifficulty = serializers.CharField(source='challenge.difficulty')
+    correct = serializers.BooleanField()
+    createdAt = serializers.DateTimeField(source='created_at')
+
+
+class SolveHistorySerializer(serializers.Serializer):
+    """One of the caller's successful solves, with its historical points."""
+
+    id = serializers.IntegerField()
+    challengeId = serializers.IntegerField(source='challenge_id')
+    challengeTitle = serializers.CharField(source='challenge.title')
+    challengeCategory = serializers.CharField(source='challenge.category.name')
+    challengeDifficulty = serializers.CharField(source='challenge.difficulty')
+    points = serializers.IntegerField()
+    createdAt = serializers.DateTimeField(source='created_at')
+
+
 class ActivityEntrySerializer(serializers.Serializer):
     """One solve or hint-unlock event in the caller's recent history.
 
@@ -136,6 +164,12 @@ class UserStatsSerializer(serializers.Serializer):
     private account field (email, password hash, tokens, staff/superuser flags)
     can ever be serialized here. ``rank`` is ``null`` when the caller has not
     solved anything yet; ``joinDate`` is the account's ``date_joined``.
+
+    The daily solve streaks are exposed twice: as ``current_streak`` /
+    ``longest_streak`` (the contract names for these two fields) and as the
+    ``currentStreak`` / ``longestStreak`` aliases, which match the camelCase
+    convention of the rest of this payload. Both spellings always carry the
+    same server-computed value.
     """
 
     points = serializers.IntegerField()
@@ -151,4 +185,8 @@ class UserStatsSerializer(serializers.Serializer):
     recentActivity = ActivityEntrySerializer(many=True)
     progress = ProgressSerializer()
     progression = ProgressionSerializer()
+    current_streak = serializers.IntegerField()
+    longest_streak = serializers.IntegerField()
+    currentStreak = serializers.IntegerField()
+    longestStreak = serializers.IntegerField()
 

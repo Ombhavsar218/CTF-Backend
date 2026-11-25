@@ -1,0 +1,76 @@
+﻿pytest.exe : E:\Flag-hunt\ctf-platform-be\venv\lib\site-packages\pytest_asyncio\plugin.py:208: 
+PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+At line:4 char:52
++ ... w(); $out = & 'E:\Flag-hunt\ctf-platform-be\venv\Scripts\pytest.exe'  ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (E:\Flag-hunt\ct...cope" is unset.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of 
+pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop 
+scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", 
+"class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+F.....................................................................F. [ 43%]
+........................................................................ [ 87%]
+.....................                                                    [100%]
+================================== FAILURES ===================================
+_______ test_install_backend_failure_persists_failed_state_and_history ________
+
+    def test_install_backend_failure_persists_failed_state_and_history():
+        store = _store('r01-ok.db')
+        backend = _FailingInstallBackend(authorized_backend())
+        svc = _svc(store, backend)
+        req = _req(pid='r01-ok', key='r01-ok-key')
+    
+        res = svc.install_policy(req)
+        assert res['status'] == 'error'
+        assert res['error_code'] == 'INSTALL_FAILED'
+    
+        rec = store.get_by_policy('r01-ok', 1)
+        assert rec is not None
+        assert rec['installation_state'] == 'FAILED'
+        idem = store.get_idempotency_record('r01-ok-key', 'install_policy')
+        assert idem is not None and idem['status'] == 'COMPLETED'
+        history = store.get_lifecycle_history(rec['ownership_record_id'])
+        assert any(h['new_state'] == 'FAILED' and h['result'] == 'error' for h in history)
+    
+        # A completed error response is replayable and does not invoke the backend again.
+        # Outward backend error messages are bounded/sanitized (no raw backend text leak),
+        # while status/error_code and durable failure semantics are preserved.
+        replay = svc.install_policy(_req(pid='r01-ok', key='r01-ok-key'))
+        assert replay['status'] == res['status'] == 'error'
+        assert replay.get('error_code') == res.get('error_code') == 'INSTALL_FAILED'
+>       assert replay.get('error_message') == res.get('error_message')
+E       AssertionError: assert 'mock install failure' == 'Backend failure'
+E         
+E         - Backend failure
+E         + mock install failure
+
+broker\tests\test_firewall_controller_residual_risk_remediation.py:270: AssertionError
+_ test_same_key_retry_after_backend_success_lost_response_recovers_without_duplicate_revoke _
+
+    def test_same_key_retry_after_backend_success_lost_response_recovers_without_duplicate_revoke():
+        store = _store('f01-lost-response.db')
+        backend = _RevokeThenFailBackend(authorized_backend())
+        svc = _svc(store, backend)
+        base = _install_active(svc, pid='f01-lost')
+        key = 'f01-lost-key'
+        req = _new_request(base, idempotency_key=key)
+    
+>       with pytest.raises(FirewallControllerBackendError):
+E       NameError: name 'FirewallControllerBackendError' is not defined
+
+broker\tests\test_firewall_controller_revoke_recovery_and_idempotency_hardening.py:304: NameError
+============================== warnings summary ===============================
+venv\lib\site-packages\pydantic\_internal\_config.py:291
+  E:\Flag-hunt\ctf-platform-be\venv\lib\site-packages\pydantic\_internal\_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED broker/tests/test_firewall_controller_residual_risk_remediation.py::test_install_backend_failure_persists_failed_state_and_history
+FAILED broker/tests/test_firewall_controller_revoke_recovery_and_idempotency_hardening.py::test_same_key_retry_after_backend_success_lost_response_recovers_without_duplicate_revoke
+2 failed, 163 passed, 1 warning in 50.51s
+

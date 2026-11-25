@@ -19,3 +19,7 @@ media/
 *.log
 .DS_Store
 Thumbs.db
+
+# Celery Beat local state (the Docker setup keeps this in a named volume)
+celerybeat-schedule*
+celerybeat.pid
